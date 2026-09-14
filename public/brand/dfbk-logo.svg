@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 150" role="img" aria-labelledby="title desc">
+  <title id="title">DFBK.app</title>
+  <desc id="desc">DFBK.app logo — Dein Foto bringt Kunden</desc>
+  <rect x="8" y="14" width="504" height="122" rx="14" fill="none" stroke="#17212B" stroke-width="8"/>
+  <g font-family="Arial, Helvetica, sans-serif" font-weight="900" dominant-baseline="middle">
+    <text x="34" y="77" font-size="78" fill="#102A43" stroke="#FFFFFF" stroke-width="3" paint-order="stroke">DFBK</text>
+    <circle cx="301" cy="83" r="9" fill="#FFB000"/>
+    <text x="322" y="79" font-size="54" fill="#2563EB" stroke="#FFFFFF" stroke-width="2.2" paint-order="stroke">app</text>
+  </g>
+</svg>

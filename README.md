@@ -72,3 +72,7 @@ Cloudflare config is in `wrangler.jsonc`.
 Large structural work: computer/local Git workflow. Small fixes: GitHub/mobile commits are fine. Keep meaningful commits so rollback stays easy.
 
 See `/docs` before connecting any API.
+
+## Brand / Design
+
+The approved DFBK.app brand assets are included in `public/brand/`. The approved color system is applied globally in `src/styles/global.css`. See `docs/DESIGN-SYSTEM.md` for the fixed palette and logo rules.

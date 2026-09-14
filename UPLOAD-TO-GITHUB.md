@@ -8,7 +8,7 @@
 
 Suggested commit message:
 
-`Expand DFBK.app full technical skeleton`
+`Apply approved DFBK.app brand and full skeleton`
 
 Cloudflare deploy command should remain:
 

@@ -4,9 +4,10 @@ export default function Footer() {
   return (
     <footer className="footer">
       <div className="container footer-grid">
-        <div>
-          <strong>DFBK</strong>
+        <div className="footer-brand">
+          <img className="footer-logo" src="/brand/dfbk-logo.svg" alt="DFBK.app" />
           <p>Dein Foto bringt Kunden.</p>
+          <span>AI-Marketing für Handwerker und kleine Betriebe.</span>
         </div>
         <div>
           <strong>Produkt</strong>
