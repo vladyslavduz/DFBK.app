@@ -1,3 +1,5 @@
+import AppLink from './AppLink';
+
 export default function Footer() {
   return (
     <footer className="footer">
@@ -8,14 +10,17 @@ export default function Footer() {
         </div>
         <div>
           <strong>Produkt</strong>
-          <a href="#features">Content</a>
-          <a href="#how">Projekte</a>
-          <a href="#pricing">Preise</a>
+          <AppLink to="/create">Content erstellen</AppLink>
+          <AppLink to="/projects">Projekte</AppLink>
+          <AppLink to="/pricing">Preise</AppLink>
+          <AppLink to="/integrations">Integrationen</AppLink>
         </div>
         <div>
           <strong>Rechtliches</strong>
-          <a href="/impressum.html">Impressum</a>
-          <a href="/datenschutz.html">Datenschutz</a>
+          <AppLink to="/impressum">Impressum</AppLink>
+          <AppLink to="/datenschutz">Datenschutz</AppLink>
+          <AppLink to="/agb">AGB</AppLink>
+          <AppLink to="/widerruf">Widerruf</AppLink>
         </div>
       </div>
     </footer>

@@ -1,0 +1,7 @@
+import { useState } from 'react';
+import PageShell from '../components/PageShell';
+
+export default function CreateProjectPage() {
+  const [files, setFiles] = useState<File[]>([]);
+  return <PageShell eyebrow="Neues Projekt" title="Fotos hochladen" intro="Die Oberfläche ist bereits vorbereitet. Die eigentliche Upload- und AI-Verarbeitung wird später über die Worker-API angeschlossen."><div className="form-card"><label className="upload-box"><strong>Arbeitsfotos auswählen</strong><span>JPG, PNG, HEIC — spätere Validierung serverseitig</span><input type="file" accept="image/*" multiple onChange={e => setFiles(Array.from(e.target.files || []))} /></label>{files.length > 0 && <div className="file-list"><strong>{files.length} Datei(en) ausgewählt</strong>{files.map(file => <span key={`${file.name}-${file.size}`}>{file.name}</span>)}</div>}<label>Kurze Notiz zum Auftrag (optional)<textarea placeholder="z. B. Wohnzimmer neu gestrichen, Achern, Farbe: Weiß + Eukalyptus" /></label><label>Gewünschter Inhalt<select defaultValue="auto"><option value="auto">Automatisch auswählen</option><option>Google Business</option><option>Instagram / Facebook</option><option>Website / Referenz</option><option>Blog</option></select></label><button className="button" disabled>AI-Inhalt erstellen — API noch nicht verbunden</button><p className="form-note">Geplante API-Kette: Upload → Bildanalyse → Textgenerierung → Vorschau → Freigabe → Veröffentlichung.</p></div></PageShell>;
+}

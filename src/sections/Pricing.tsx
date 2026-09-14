@@ -1,3 +1,5 @@
+import AppLink from '../components/AppLink';
+
 export default function Pricing() {
   return (
     <section id="pricing" className="section section-muted">
@@ -10,7 +12,7 @@ export default function Pricing() {
           <div className="price">€ -- <small>/ Monat</small></div>
           <p>[ Preis wird nach MVP-Test festgelegt ]</p>
           <ul><li>AI Content</li><li>Projekt-Archiv</li><li>Google / Social Formate</li><li>Keine langfristige Bindung</li></ul>
-          <a className="button" href="#start">Testzugang</a>
+          <AppLink className="button" to="/register">Testzugang</AppLink>
         </article>
       </div>
     </section>

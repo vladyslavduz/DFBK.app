@@ -1,13 +1,15 @@
+import AppLink from './AppLink';
+
 export default function Header() {
   return (
     <header className="site-header container">
-      <a className="brand" href="#top">DFBK</a>
+      <AppLink className="brand" to="/">DFBK</AppLink>
       <nav>
-        <a href="#features">Funktionen</a>
-        <a href="#how">So funktioniert's</a>
-        <a href="#pricing">Preise</a>
+        <a href="/#features">Funktionen</a>
+        <a href="/#how">So funktioniert's</a>
+        <a href="/#pricing">Preise</a>
       </nav>
-      <a className="button button-small" href="#start">Kostenlos testen</a>
+      <AppLink className="button button-small" to="/create">Kostenlos testen</AppLink>
     </header>
   );
 }

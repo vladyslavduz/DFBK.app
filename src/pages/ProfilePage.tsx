@@ -1,0 +1,5 @@
+import PageShell from '../components/PageShell';
+
+export default function ProfilePage() {
+  return <PageShell eyebrow="Betriebsprofil" title="DFBK lernt deinen Betrieb einmal kennen" intro="Diese Angaben werden später automatisch in jeden passenden Inhalt übernommen."><form className="form-card" onSubmit={e => e.preventDefault()}><label>Betriebsname<input placeholder="Musterbetrieb GmbH" /></label><label>Branche<select><option>Maler / Lackierer</option><option>Sanitär / Heizung</option><option>Elektrik</option><option>Garten- und Landschaftsbau</option><option>Reinigung</option><option>Sonstige</option></select></label><label>Ort / Einsatzgebiet<input placeholder="Achern + 30 km" /></label><label>Leistungen<textarea placeholder="Innenanstrich, Fassaden, Lackierarbeiten ..." /></label><label>Telefon<input type="tel" /></label><label>Website<input type="url" /></label><label>Ton der Kommunikation<select><option>Professionell & freundlich</option><option>Kurz & direkt</option><option>Locker</option></select></label><button className="button" disabled>Profil speichern — Datenbank noch nicht verbunden</button></form></PageShell>;
+}

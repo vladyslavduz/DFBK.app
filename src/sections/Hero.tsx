@@ -1,3 +1,5 @@
+import AppLink from '../components/AppLink';
+
 export default function Hero() {
   return (
     <section id="top" className="hero section">
@@ -7,7 +9,7 @@ export default function Hero() {
           <h1>Aus deinen Arbeitsfotos wird fertiges Marketing.</h1>
           <p className="lead">Foto hochladen. DFBK erkennt die Arbeit und erstellt automatisch passende Inhalte für Website, Google und Social Media.</p>
           <div className="actions">
-            <a id="start" className="button" href="#how">Jetzt testen</a>
+            <AppLink id="start" className="button" to="/create">Jetzt testen</AppLink>
             <a className="button button-secondary" href="#how">Demo ansehen</a>
           </div>
         </div>
