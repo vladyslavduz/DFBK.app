@@ -3,10 +3,19 @@
   "name": "dfbk-app",
   "main": "./worker/index.ts",
   "compatibility_date": "2026-09-14",
+
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS",
     "not_found_handling": "single-page-application",
     "run_worker_first": ["/api/*"]
-  }
+  },
+
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "dfbk-db",
+      "database_id": "ВСТАВЬ_СЮДА_DATABASE_ID"
+    }
+  ]
 }
