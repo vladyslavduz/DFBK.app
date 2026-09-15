@@ -1,5 +1,6 @@
 export interface Env {
   ASSETS: Fetcher;
+  DB: D1Database;
   OPENAI_API_KEY?: string;
   EMAIL_API_KEY?: string;
   EMAIL_FROM?: string;
