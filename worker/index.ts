@@ -25,15 +25,15 @@ export default {
       return new Response(null, { status: 204, headers: { 'Access-Control-Allow-Methods': 'GET,POST,PUT,PATCH,DELETE,OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type,Authorization' } });
     }
 
-    const response =
-      handleAuth(url.pathname) ||
-      handleAI(url.pathname) ||
-      handleProjects(url.pathname) ||
-      handlePublish(url.pathname) ||
-      handleIntegrations(url.pathname) ||
-      handleBilling(url.pathname) ||
-      handleProfile(url.pathname) ||
-      handleEmail(url.pathname);
+const response =
+  await handleAuth(request, env, url.pathname) ||
+  handleAI(url.pathname) ||
+  handleProjects(url.pathname) ||
+  handlePublish(url.pathname) ||
+  handleIntegrations(url.pathname) ||
+  handleBilling(url.pathname) ||
+  handleProfile(url.pathname) ||
+  handleEmail(url.pathname);
 
     if (response) return response;
     return json({ ok: false, error: 'API route not found', path: url.pathname }, 404);
