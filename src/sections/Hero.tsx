@@ -13,7 +13,13 @@ export default function Hero() {
             <a className="button button-secondary" href="#how">Demo ansehen</a>
           </div>
         </div>
-        <div className="placeholder-card">[ Platzhalter: Produkt-Screenshot / Handy-Mockup ]</div>
+        <div className="hero-showcase">
+          <iframe
+            src="/visual/dfbk-showcase/index.html?embed=1"
+            title="So verwandelt DFBK Arbeitsfotos in neue Kundenanfragen"
+            loading="eager"
+          />
+        </div>
       </div>
     </section>
   );
