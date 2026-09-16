@@ -123,6 +123,23 @@ h3 { letter-spacing: -.02em; }
 }
 .placeholder-card.compact { min-height: 300px; }
 
+.hero-showcase {
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  border: 1px solid rgba(16, 42, 67, .16);
+  border-radius: 26px;
+  background: var(--navy);
+  box-shadow: 0 28px 70px rgba(16, 42, 67, .22);
+}
+
+.hero-showcase iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
 .cards { display: grid; gap: 20px; margin-top: 38px; }
 .cards.three { grid-template-columns: repeat(3, 1fr); }
 .card, .pricing-card, .form-card {
@@ -219,6 +236,7 @@ h3 { letter-spacing: -.02em; }
   .section { padding: 64px 0; }
   .hero { padding-top: 48px; }
   .placeholder-card { min-height: 300px; }
+  .hero-showcase { border-radius: 20px; }
   .integration-card { align-items: flex-start; flex-direction: column; }
   .header-login { display: none; }
   .brand-logo { width: 146px; }
