@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef } from 'react';
 
 const features = [
   {
@@ -33,20 +33,38 @@ const features = [
   }
 ];
 
-const DISPLAY_TIME_MS = 6000;
-
 export default function Features() {
-  const [activeIndex, setActiveIndex] = useState(0);
+  const listRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    const list = listRef.current;
+    if (!list) return;
+
+    const slides = [...list.querySelectorAll<HTMLElement>('[data-feature-reveal]')];
     const motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)');
-    if (motionPreference.matches) return;
 
-    const timer = window.setInterval(() => {
-      setActiveIndex((current) => (current + 1) % features.length);
-    }, DISPLAY_TIME_MS);
+    if (motionPreference.matches) {
+      slides.forEach((slide) => slide.classList.add('is-visible'));
+      return;
+    }
 
-    return () => window.clearInterval(timer);
+    list.classList.add('is-reveal-ready');
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          entry.target.classList.toggle('is-visible', entry.isIntersecting);
+        });
+      },
+      {
+        threshold: 0.18,
+        rootMargin: '-6% 0px -6% 0px'
+      }
+    );
+
+    slides.forEach((slide) => observer.observe(slide));
+
+    return () => observer.disconnect();
   }, []);
 
   return (
@@ -55,28 +73,24 @@ export default function Features() {
         <span className="eyebrow">Funktionen</span>
         <h2>DFBK.app macht Marketing einfacher</h2>
 
-        <div className="feature-slider" aria-live="off">
-          {features.map((feature, index) => {
-            const isActive = index === activeIndex;
-
-            return (
-              <figure
-                className={`feature-slide${isActive ? ' is-active' : ''}`}
-                aria-hidden={!isActive}
-                key={`${feature.profession}-${feature.name}`}
-              >
-                <img
-                  src={feature.src}
-                  alt={isActive ? `${feature.name} – Beispiel aus ${feature.profession}` : ''}
-                  draggable="false"
-                  loading={index === 0 ? 'eager' : 'lazy'}
-                  decoding="async"
-                  width="1520"
-                  height="1520"
-                />
-              </figure>
-            );
-          })}
+        <div className="feature-list" ref={listRef}>
+          {features.map((feature, index) => (
+            <figure
+              className="feature-item"
+              data-feature-reveal
+              key={`${feature.profession}-${feature.name}`}
+            >
+              <img
+                src={feature.src}
+                alt={`${feature.name} – Beispiel aus ${feature.profession}`}
+                draggable="false"
+                loading={index < 2 ? 'eager' : 'lazy'}
+                decoding="async"
+                width="1520"
+                height="1520"
+              />
+            </figure>
+          ))}
         </div>
       </div>
     </section>
