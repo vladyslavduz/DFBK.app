@@ -142,6 +142,46 @@ h3 { letter-spacing: -.02em; }
 
 .cards { display: grid; gap: 20px; margin-top: 38px; }
 .cards.three { grid-template-columns: repeat(3, 1fr); }
+
+.profession-fade-section {
+  width: 100%;
+  padding: clamp(24px, 4vw, 54px) 0;
+  overflow: hidden;
+}
+
+.profession-fade-frame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 2152 / 731;
+}
+
+.profession-fade-card {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 1s ease-in-out;
+  will-change: opacity;
+}
+
+.profession-fade-card.is-active { opacity: 1; }
+
+.profession-fade-card img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .profession-fade-card { transition: none; }
+}
+
 .card, .pricing-card, .form-card {
   background: var(--card);
   border: 1px solid var(--border);
