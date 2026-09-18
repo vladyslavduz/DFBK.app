@@ -12,9 +12,9 @@ export async function sendVerificationEmail(
   options: SendVerificationEmailOptions
 ): Promise<void> {
 
-  if (!env.EMAIL_API_KEY) {
+  if (!env.RESEND_API_KEY) {
     throw new Error(
-      'EMAIL_API_KEY is not configured'
+      'RESEND_API_KEY is not configured'
     );
   }
 
@@ -33,7 +33,7 @@ export async function sendVerificationEmail(
 
         headers: {
           'Authorization':
-            `Bearer ${env.EMAIL_API_KEY}`,
+            `Bearer ${env.RESEND_API_KEY}`,
 
           'Content-Type':
             'application/json',
