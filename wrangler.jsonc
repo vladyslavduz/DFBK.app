@@ -20,7 +20,7 @@
   ],
 
   "vars": {
-    "EMAIL_FROM": "DFBK.app <noreply@dfbk.app>"
+    "EMAIL_FROM": "DFBK.app <noreply@auth.dfbk.app>"
   },
 
   "observability": {
