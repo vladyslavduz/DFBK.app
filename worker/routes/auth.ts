@@ -45,12 +45,6 @@ function isValidEmail(email: string): boolean {
 }
 
 
-/*
- * Читает cookie по имени из HTTP-заголовка Cookie.
- *
- * Пример:
- * Cookie: abc=123; dfbk_session=XYZ; theme=dark
- */
 function getCookie(
   request: Request,
   name: string
@@ -77,6 +71,19 @@ function getCookie(
   }
 
   return null;
+}
+
+
+function buildClearSessionCookie(): string {
+  return [
+    'dfbk_session=',
+    'Path=/',
+    'HttpOnly',
+    'Secure',
+    'SameSite=Lax',
+    'Max-Age=0',
+    'Expires=Thu, 01 Jan 1970 00:00:00 GMT',
+  ].join('; ');
 }
 
 
@@ -109,7 +116,7 @@ export async function handleAuth(
 
 
   /*
-   * CURRENT USER / CURRENT SESSION
+   * CURRENT USER
    */
   if (
     pathname === '/api/auth/me' &&
@@ -121,22 +128,17 @@ export async function handleAuth(
 
   /*
    * LOGOUT
-   * Пока заглушка.
    */
   if (
     pathname === '/api/auth/logout' &&
     request.method === 'POST'
   ) {
-    return notImplemented(
-      'auth.logout',
-      []
-    );
+    return logout(request, env);
   }
 
 
   /*
    * FORGOT PASSWORD
-   * Пока заглушка.
    */
   if (
     pathname === '/api/auth/forgot-password' &&
@@ -151,7 +153,6 @@ export async function handleAuth(
 
   /*
    * RESET PASSWORD
-   * Пока заглушка.
    */
   if (
     pathname === '/api/auth/reset-password' &&
@@ -166,7 +167,6 @@ export async function handleAuth(
 
   /*
    * VERIFY EMAIL
-   * Пока заглушка.
    */
   if (
     pathname === '/api/auth/verify-email'
@@ -310,10 +310,6 @@ async function register(
         : String(error);
 
 
-    /*
-     * Защита от двух одинаковых
-     * register-запросов одновременно.
-     */
     if (
       message.includes('UNIQUE') ||
       message.includes('unique')
@@ -574,10 +570,6 @@ async function getCurrentUser(
   env: Env
 ): Promise<Response> {
 
-  /*
-   * Берём session token
-   * из HttpOnly cookie.
-   */
   const sessionToken =
     getCookie(
       request,
@@ -585,10 +577,6 @@ async function getCurrentUser(
     );
 
 
-  /*
-   * Cookie нет:
-   * пользователь не авторизован.
-   */
   if (!sessionToken) {
 
     return json(
@@ -601,20 +589,12 @@ async function getCurrentUser(
   }
 
 
-  /*
-   * В БД хранится не сам token,
-   * а SHA-256 hash.
-   */
   const tokenHash =
     await hashSessionToken(
       sessionToken
     );
 
 
-  /*
-   * Ищем session и сразу
-   * присоединяем пользователя.
-   */
   const session =
     await env.DB
       .prepare(
@@ -642,9 +622,6 @@ async function getCurrentUser(
       .first<CurrentSessionRow>();
 
 
-  /*
-   * Session не найдена.
-   */
   if (!session) {
 
     return json(
@@ -657,12 +634,6 @@ async function getCurrentUser(
   }
 
 
-  /*
-   * Session была отозвана.
-   *
-   * Позже logout будет
-   * заполнять revoked_at.
-   */
   if (session.revoked_at !== null) {
 
     return json(
@@ -675,9 +646,6 @@ async function getCurrentUser(
   }
 
 
-  /*
-   * Проверяем срок действия.
-   */
   const expiresAt =
     new Date(session.expires_at);
 
@@ -696,10 +664,6 @@ async function getCurrentUser(
   }
 
 
-  /*
-   * Session действительна.
-   * Возвращаем текущего пользователя.
-   */
   return json(
     {
       ok: true,
@@ -717,5 +681,127 @@ async function getCurrentUser(
       },
     },
     200
+  );
+}
+
+
+/*
+ * =========================================================
+ * LOGOUT
+ *
+ * POST /api/auth/logout
+ * =========================================================
+ */
+
+async function logout(
+  request: Request,
+  env: Env
+): Promise<Response> {
+
+  /*
+   * Берём текущую session cookie.
+   */
+  const sessionToken =
+    getCookie(
+      request,
+      'dfbk_session'
+    );
+
+
+  /*
+   * Даже если cookie уже нет,
+   * logout считаем успешным.
+   *
+   * Это делает endpoint идемпотентным:
+   * повторный logout не должен падать.
+   */
+  if (!sessionToken) {
+
+    return new Response(
+      JSON.stringify({
+        ok: true,
+      }),
+      {
+        status: 200,
+
+        headers: {
+          'Content-Type':
+            'application/json; charset=UTF-8',
+
+          'Set-Cookie':
+            buildClearSessionCookie(),
+        },
+      }
+    );
+  }
+
+
+  /*
+   * В D1 хранится SHA-256 hash token.
+   */
+  const tokenHash =
+    await hashSessionToken(
+      sessionToken
+    );
+
+
+  /*
+   * Не удаляем session.
+   *
+   * Ставим revoked_at,
+   * чтобы сохранялась история
+   * и можно было видеть,
+   * что session существовала.
+   */
+  try {
+
+    await env.DB
+      .prepare(
+        `
+        UPDATE sessions
+        SET revoked_at = CURRENT_TIMESTAMP
+        WHERE token_hash = ?1
+          AND revoked_at IS NULL
+        `
+      )
+      .bind(tokenHash)
+      .run();
+
+  } catch (error) {
+
+    console.error(
+      'LOGOUT_SESSION_DB_ERROR',
+      error
+    );
+
+
+    return json(
+      {
+        ok: false,
+        error: 'LOGOUT_FAILED',
+      },
+      500
+    );
+  }
+
+
+  /*
+   * Удаляем cookie из браузера.
+   */
+  return new Response(
+    JSON.stringify({
+      ok: true,
+    }),
+    {
+      status: 200,
+
+      headers: {
+        'Content-Type':
+          'application/json; charset=UTF-8',
+
+        'Set-Cookie':
+          buildClearSessionCookie(),
+      },
+    }
   );
 }
