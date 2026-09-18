@@ -17,9 +17,9 @@
       "database_name": "dfbk-db",
       "database_id": "4e4395c7-9dc5-46f5-ba95-507b348dc307"
     }
-  ]
-}
+  ],
 
-"vars": {
-  "EMAIL_FROM": "DFBK.app <noreply@dfbk.app>"
-},
+  "vars": {
+    "EMAIL_FROM": "DFBK.app <noreply@dfbk.app>"
+  }
+}
