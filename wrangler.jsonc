@@ -19,3 +19,7 @@
     }
   ]
 }
+
+"vars": {
+  "EMAIL_FROM": "DFBK.app <noreply@dfbk.app>"
+},
