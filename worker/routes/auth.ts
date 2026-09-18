@@ -352,7 +352,7 @@ async function register(
           verificationTokenId,
           userId,
           verificationTokenHash,
-          'email_verification',
+          'verify_email',
           verificationExpiresAt.toISOString()
         ),
     ]);
@@ -420,16 +420,11 @@ async function register(
 
 
     /*
-     * Email отправить не удалось.
-     *
-     * Удаляем только что созданного
-     * пользователя.
+     * Если письмо не отправилось,
+     * удаляем созданного пользователя.
      *
      * Благодаря ON DELETE CASCADE
-     * auth_tokens также удалится.
-     *
-     * После этого пользователь сможет
-     * просто повторить регистрацию.
+     * связанный auth_token также удалится.
      */
     try {
 
@@ -534,7 +529,7 @@ async function verifyEmail(
           ON users.id = auth_tokens.user_id
 
         WHERE auth_tokens.token_hash = ?1
-          AND auth_tokens.type = 'email_verification'
+          AND auth_tokens.type = 'verify_email'
 
         LIMIT 1
         `
