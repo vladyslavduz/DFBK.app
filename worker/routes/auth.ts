@@ -13,6 +13,16 @@ import {
   buildSessionCookie,
 } from '../lib/session';
 
+import {
+  createAuthToken,
+  hashAuthToken,
+  getEmailVerificationExpiry,
+} from '../lib/auth-token';
+
+import {
+  sendVerificationEmail,
+} from '../lib/email';
+
 
 type RegisterBody = {
   email?: string;
@@ -29,6 +39,16 @@ type CurrentSessionRow = {
   user_id: string;
   expires_at: string;
   revoked_at: string | null;
+
+  email: string;
+  email_verified: number;
+};
+
+type VerificationTokenRow = {
+  id: string;
+  user_id: string;
+  expires_at: string;
+  used_at: string | null;
 
   email: string;
   email_verified: number;
@@ -138,6 +158,17 @@ export async function handleAuth(
 
 
   /*
+   * VERIFY EMAIL
+   */
+  if (
+    pathname === '/api/auth/verify-email' &&
+    request.method === 'GET'
+  ) {
+    return verifyEmail(request, env);
+  }
+
+
+  /*
    * FORGOT PASSWORD
    */
   if (
@@ -146,7 +177,7 @@ export async function handleAuth(
   ) {
     return notImplemented(
       'auth.forgotPassword',
-      ['EMAIL_API_KEY']
+      ['RESEND_API_KEY']
     );
   }
 
@@ -160,20 +191,7 @@ export async function handleAuth(
   ) {
     return notImplemented(
       'auth.resetPassword',
-      ['EMAIL_API_KEY']
-    );
-  }
-
-
-  /*
-   * VERIFY EMAIL
-   */
-  if (
-    pathname === '/api/auth/verify-email'
-  ) {
-    return notImplemented(
-      'auth.verifyEmail',
-      ['EMAIL_API_KEY']
+      ['RESEND_API_KEY']
     );
   }
 
@@ -281,26 +299,63 @@ async function register(
     await hashPassword(password);
 
 
+  const verificationToken =
+    createAuthToken();
+
+  const verificationTokenHash =
+    await hashAuthToken(
+      verificationToken
+    );
+
+  const verificationTokenId =
+    crypto.randomUUID();
+
+  const verificationExpiresAt =
+    getEmailVerificationExpiry();
+
+
   try {
 
-    await env.DB
-      .prepare(
-        `
-        INSERT INTO users (
-          id,
-          email,
-          password_hash,
-          email_verified
+    await env.DB.batch([
+      env.DB
+        .prepare(
+          `
+          INSERT INTO users (
+            id,
+            email,
+            password_hash,
+            email_verified
+          )
+          VALUES (?1, ?2, ?3, 0)
+          `
         )
-        VALUES (?1, ?2, ?3, 0)
-        `
-      )
-      .bind(
-        userId,
-        email,
-        passwordHash
-      )
-      .run();
+        .bind(
+          userId,
+          email,
+          passwordHash
+        ),
+
+      env.DB
+        .prepare(
+          `
+          INSERT INTO auth_tokens (
+            id,
+            user_id,
+            token_hash,
+            type,
+            expires_at
+          )
+          VALUES (?1, ?2, ?3, ?4, ?5)
+          `
+        )
+        .bind(
+          verificationTokenId,
+          userId,
+          verificationTokenHash,
+          'email_verification',
+          verificationExpiresAt.toISOString()
+        ),
+    ]);
 
   } catch (error) {
 
@@ -340,6 +395,73 @@ async function register(
   }
 
 
+  const verificationUrl =
+    `${new URL(request.url).origin}` +
+    `/api/auth/verify-email` +
+    `?token=${encodeURIComponent(verificationToken)}`;
+
+
+  try {
+
+    await sendVerificationEmail(
+      env,
+      {
+        to: email,
+        verificationUrl,
+      }
+    );
+
+  } catch (error) {
+
+    console.error(
+      'VERIFICATION_EMAIL_SEND_ERROR',
+      error
+    );
+
+
+    /*
+     * Email отправить не удалось.
+     *
+     * Удаляем только что созданного
+     * пользователя.
+     *
+     * Благодаря ON DELETE CASCADE
+     * auth_tokens также удалится.
+     *
+     * После этого пользователь сможет
+     * просто повторить регистрацию.
+     */
+    try {
+
+      await env.DB
+        .prepare(
+          `
+          DELETE FROM users
+          WHERE id = ?1
+          `
+        )
+        .bind(userId)
+        .run();
+
+    } catch (rollbackError) {
+
+      console.error(
+        'REGISTER_ROLLBACK_ERROR',
+        rollbackError
+      );
+    }
+
+
+    return json(
+      {
+        ok: false,
+        error: 'VERIFICATION_EMAIL_FAILED',
+      },
+      502
+    );
+  }
+
+
   return json(
     {
       ok: true,
@@ -349,8 +471,210 @@ async function register(
         email,
         emailVerified: false,
       },
+
+      verificationEmailSent: true,
     },
     201
+  );
+}
+
+
+/*
+ * =========================================================
+ * VERIFY EMAIL
+ *
+ * GET /api/auth/verify-email?token=...
+ * =========================================================
+ */
+
+async function verifyEmail(
+  request: Request,
+  env: Env
+): Promise<Response> {
+
+  const url =
+    new URL(request.url);
+
+  const token =
+    url.searchParams.get('token');
+
+
+  if (!token) {
+
+    return json(
+      {
+        ok: false,
+        error: 'VERIFICATION_TOKEN_REQUIRED',
+      },
+      400
+    );
+  }
+
+
+  const tokenHash =
+    await hashAuthToken(token);
+
+
+  const verification =
+    await env.DB
+      .prepare(
+        `
+        SELECT
+          auth_tokens.id,
+          auth_tokens.user_id,
+          auth_tokens.expires_at,
+          auth_tokens.used_at,
+
+          users.email,
+          users.email_verified
+
+        FROM auth_tokens
+
+        INNER JOIN users
+          ON users.id = auth_tokens.user_id
+
+        WHERE auth_tokens.token_hash = ?1
+          AND auth_tokens.type = 'email_verification'
+
+        LIMIT 1
+        `
+      )
+      .bind(tokenHash)
+      .first<VerificationTokenRow>();
+
+
+  if (!verification) {
+
+    return json(
+      {
+        ok: false,
+        error: 'INVALID_VERIFICATION_TOKEN',
+      },
+      400
+    );
+  }
+
+
+  /*
+   * Если email уже подтверждён
+   * и token уже использован,
+   * повторный переход по ссылке
+   * считаем успешным.
+   */
+  if (
+    verification.used_at !== null &&
+    verification.email_verified === 1
+  ) {
+
+    return json(
+      {
+        ok: true,
+        alreadyVerified: true,
+
+        user: {
+          id: verification.user_id,
+          email: verification.email,
+          emailVerified: true,
+        },
+      },
+      200
+    );
+  }
+
+
+  if (verification.used_at !== null) {
+
+    return json(
+      {
+        ok: false,
+        error: 'VERIFICATION_TOKEN_ALREADY_USED',
+      },
+      400
+    );
+  }
+
+
+  const expiresAt =
+    new Date(verification.expires_at);
+
+
+  if (
+    Number.isNaN(expiresAt.getTime()) ||
+    expiresAt.getTime() <= Date.now()
+  ) {
+
+    return json(
+      {
+        ok: false,
+        error: 'VERIFICATION_TOKEN_EXPIRED',
+      },
+      410
+    );
+  }
+
+
+  try {
+
+    await env.DB.batch([
+
+      env.DB
+        .prepare(
+          `
+          UPDATE users
+          SET
+            email_verified = 1,
+            email_verified_at = CURRENT_TIMESTAMP
+          WHERE id = ?1
+          `
+        )
+        .bind(
+          verification.user_id
+        ),
+
+      env.DB
+        .prepare(
+          `
+          UPDATE auth_tokens
+          SET used_at = CURRENT_TIMESTAMP
+          WHERE id = ?1
+            AND used_at IS NULL
+          `
+        )
+        .bind(
+          verification.id
+        ),
+
+    ]);
+
+  } catch (error) {
+
+    console.error(
+      'VERIFY_EMAIL_DB_ERROR',
+      error
+    );
+
+
+    return json(
+      {
+        ok: false,
+        error: 'EMAIL_VERIFICATION_FAILED',
+      },
+      500
+    );
+  }
+
+
+  return json(
+    {
+      ok: true,
+
+      user: {
+        id: verification.user_id,
+        email: verification.email,
+        emailVerified: true,
+      },
+    },
+    200
   );
 }
 
@@ -649,6 +973,7 @@ async function getCurrentUser(
   const expiresAt =
     new Date(session.expires_at);
 
+
   if (
     Number.isNaN(expiresAt.getTime()) ||
     expiresAt.getTime() <= Date.now()
@@ -698,9 +1023,6 @@ async function logout(
   env: Env
 ): Promise<Response> {
 
-  /*
-   * Берём текущую session cookie.
-   */
   const sessionToken =
     getCookie(
       request,
@@ -708,13 +1030,6 @@ async function logout(
     );
 
 
-  /*
-   * Даже если cookie уже нет,
-   * logout считаем успешным.
-   *
-   * Это делает endpoint идемпотентным:
-   * повторный logout не должен падать.
-   */
   if (!sessionToken) {
 
     return new Response(
@@ -736,23 +1051,12 @@ async function logout(
   }
 
 
-  /*
-   * В D1 хранится SHA-256 hash token.
-   */
   const tokenHash =
     await hashSessionToken(
       sessionToken
     );
 
 
-  /*
-   * Не удаляем session.
-   *
-   * Ставим revoked_at,
-   * чтобы сохранялась история
-   * и можно было видеть,
-   * что session существовала.
-   */
   try {
 
     await env.DB
@@ -785,9 +1089,6 @@ async function logout(
   }
 
 
-  /*
-   * Удаляем cookie из браузера.
-   */
   return new Response(
     JSON.stringify({
       ok: true,
