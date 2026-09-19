@@ -500,7 +500,30 @@ h3 { letter-spacing: -.02em; }
 .status-badge { white-space: nowrap; font-size: .78rem; font-weight: 850; padding: 7px 10px; border-radius: 999px; }
 .status-disabled { background: #F1F3F5; color: var(--muted); }
 .status-enabled { background: #EAF7F0; color: var(--success); }
-.legal-copy { max-width: 760px; margin-top: 30px; border-left: 4px solid var(--amber); padding-left: 22px; }
+.legal-copy {
+  max-width: 820px;
+  display: grid;
+  gap: 18px;
+  margin-top: 34px;
+}
+.legal-copy section, .legal-note {
+  padding: clamp(22px, 4vw, 34px);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--card);
+  box-shadow: var(--shadow-soft);
+}
+.legal-copy section { border-left: 4px solid var(--amber); }
+.legal-copy h2 { margin: 0 0 15px; font-size: clamp(1.25rem, 3vw, 1.65rem); letter-spacing: -.025em; }
+.legal-copy p { margin: 0 0 14px; color: #42566B; }
+.legal-copy p:last-child { margin-bottom: 0; }
+.legal-copy ul { margin: 0 0 14px; padding-left: 22px; color: #42566B; }
+.legal-copy li + li { margin-top: 8px; }
+.legal-copy address { color: #42566B; font-style: normal; line-height: 1.75; }
+.legal-copy a { color: var(--blue); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+.legal-copy code { padding: 2px 6px; border-radius: 6px; background: #EEF4FF; color: var(--navy); font-size: .9em; }
+.legal-note { border-color: #CFE0FA; background: #F3F7FF; color: var(--navy); font-weight: 650; }
+.legal-updated { margin: 8px 0 0 !important; color: var(--muted) !important; font-size: .9rem; }
 
 .notice-success { border: 1px solid rgba(22, 131, 74, .22); background: rgba(22, 131, 74, .07); color: var(--success); }
 .notice-error { border: 1px solid rgba(180, 35, 24, .22); background: rgba(180, 35, 24, .06); color: var(--error); }
@@ -549,6 +572,10 @@ h3 { letter-spacing: -.02em; }
   .process-summary svg { width: 34px; height: 34px; }
   .process-summary strong { font-size: .94rem; }
   .process-summary span { font-size: .82rem; }
+  .page-main { padding-top: 46px; }
+  .page-title { font-size: clamp(2.25rem, 11vw, 3.25rem); }
+  .legal-copy { margin-top: 26px; gap: 14px; }
+  .legal-copy section, .legal-note { padding: 20px 18px; border-radius: 16px; }
 }
 
 @media (max-width: 370px) {

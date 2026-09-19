@@ -44,6 +44,7 @@ export default function App() {
   if (pathname === '/help') return <HelpPage />;
   if (pathname === '/impressum') return <LegalPage type="impressum" />;
   if (pathname === '/datenschutz') return <LegalPage type="datenschutz" />;
+  if (pathname === '/nutzungsbedingungen') return <LegalPage type="nutzungsbedingungen" />;
   if (pathname === '/agb') return <LegalPage type="agb" />;
   if (pathname === '/widerruf') return <LegalPage type="widerruf" />;
   return <NotFoundPage />;

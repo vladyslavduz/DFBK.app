@@ -127,8 +127,8 @@ export default function AuthModal({ open, initialMode = 'login', onClose, return
             <label className="auth-consent">
               <input type="checkbox" required />
               <span>
-                Ich akzeptiere die <AppLink to="/agb" onClick={onClose}>AGB</AppLink> und die{' '}
-                <AppLink to="/datenschutz" onClick={onClose}>Datenschutzerklärung</AppLink>.
+                Ich akzeptiere die <a href="/nutzungsbedingungen">Nutzungsbedingungen</a> und die{' '}
+                <a href="/datenschutz">Datenschutzerklärung</a>.
               </span>
             </label>
           )}
