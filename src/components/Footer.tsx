@@ -18,10 +18,9 @@ export default function Footer() {
         </div>
         <div>
           <strong>Rechtliches</strong>
-          <AppLink to="/impressum">Impressum</AppLink>
-          <AppLink to="/datenschutz">Datenschutz</AppLink>
-          <AppLink to="/agb">AGB</AppLink>
-          <AppLink to="/widerruf">Widerruf</AppLink>
+          <a href="/impressum">Impressum</a>
+          <a href="/datenschutz">Datenschutz</a>
+          <a href="/nutzungsbedingungen">Nutzungsbedingungen</a>
         </div>
       </div>
     </footer>
