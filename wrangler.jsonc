@@ -20,7 +20,9 @@
   ],
 
   "vars": {
-    "EMAIL_FROM": "DFBK.app <noreply@auth.dfbk.app>"
+    "EMAIL_FROM": "DFBK.app <noreply@auth.dfbk.app>",
+    "GOOGLE_CLIENT_ID": "1042544046802-b4ajqujncpjjba3o308n4v0ramlo8nif.apps.googleusercontent.com",
+    "GOOGLE_REDIRECT_URI": "https://dfbk.app/api/auth/google/callback"
   },
 
   "observability": {
