@@ -1,5 +1,6 @@
-import PageShell from '../components/PageShell';
+import AuthModal from '../components/AuthModal';
+import { navigate } from '../lib/router';
 
 export default function RegisterPage() {
-  return <PageShell eyebrow="Konto" title="Testzugang erstellen" intro="Registrierung, E-Mail-Bestätigung und Datenschutz-Einwilligung sind als nächster Auth-Schritt vorgesehen."><form className="form-card" onSubmit={e => e.preventDefault()}><label>Name<input placeholder="Max Mustermann" /></label><label>Betrieb<input placeholder="Muster Malerbetrieb" /></label><label>E-Mail<input type="email" /></label><label>Passwort<input type="password" /></label><label className="check-row"><input type="checkbox" /> <span>Datenschutz gelesen und akzeptiert.</span></label><button className="button" disabled>Konto erstellen — API noch nicht verbunden</button></form></PageShell>;
+  return <div className="app-gate-background"><div className="app-gate-preview" aria-hidden="true"><img src="/brand/dfbk-logo.svg" alt="" /><div /><div /><div /></div><AuthModal open initialMode="register" onClose={() => navigate('/')} onAuthenticated={() => navigate('/app')} /></div>;
 }

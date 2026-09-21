@@ -7,12 +7,12 @@ export default function Footer() {
         <div className="footer-brand">
           <img className="footer-logo" src="/brand/dfbk-logo.svg" alt="DFBK.app" />
           <p>Dein Foto bringt Kunden.</p>
-          <span>AI-Marketing für Handwerker und kleine Betriebe.</span>
+          <span>Einfacher Content für Handwerker und kleine Betriebe.</span>
         </div>
         <div>
           <strong>Produkt</strong>
-          <AppLink to="/create">Content erstellen</AppLink>
-          <AppLink to="/projects">Projekte</AppLink>
+          <AppLink to="/app/new">Content erstellen</AppLink>
+          <AppLink to="/app/projects">Projekte</AppLink>
           <AppLink to="/pricing">Preise</AppLink>
           <AppLink to="/integrations">Integrationen</AppLink>
         </div>

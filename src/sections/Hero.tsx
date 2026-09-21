@@ -9,7 +9,7 @@ export default function Hero() {
           <h1>Aus deinen Arbeitsfotos wird fertiges Marketing.</h1>
           <p className="lead">Foto hochladen. DFBK erkennt die Arbeit und erstellt automatisch passende Inhalte für Website, Google und Social Media.</p>
           <div className="actions">
-            <AppLink id="start" className="button" to="/create">Jetzt testen</AppLink>
+            <AppLink id="start" className="button" to="/app/new">Jetzt testen</AppLink>
             <a className="button button-secondary" href="#how">Demo ansehen</a>
           </div>
         </div>

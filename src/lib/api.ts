@@ -3,6 +3,7 @@ import { appConfig } from '../config/app';
 export async function apiRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
   const response = await fetch(`${appConfig.apiBaseUrl}${path}`, {
     ...options,
+    credentials: options.credentials || 'include',
     headers: {
       'Content-Type': 'application/json',
       ...(options.headers || {})
@@ -11,7 +12,9 @@ export async function apiRequest<T>(path: string, options: RequestInit = {}): Pr
 
   const body = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(body?.error || `API request failed (${response.status})`);
+    const error = new Error(body?.error || `API request failed (${response.status})`);
+    error.name = body?.error || 'API_ERROR';
+    throw error;
   }
   return body as T;
 }
