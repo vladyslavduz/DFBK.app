@@ -1,6 +1,21 @@
-import PageShell from '../components/PageShell';
 import AppLink from '../components/AppLink';
+import AppIcon from '../components/AppIcon';
+import EmptyState from '../components/EmptyState';
+import ProjectCard from '../components/ProjectCard';
+import { useAuth } from '../contexts/AuthContext';
+import { useUserArea } from '../contexts/UserAreaContext';
 
 export default function DashboardPage() {
-  return <PageShell eyebrow="Projekt Dashboard" title="Dein Marketing aus echten Arbeitsfotos" intro="Zentrale Übersicht für neue Inhalte, Projekte, Veröffentlichungen und Integrationen."><div className="dashboard-grid"><AppLink className="card action-card" to="/create"><h3>+ Neues Projekt</h3><p>Fotos hochladen und Content vorbereiten.</p></AppLink><AppLink className="card action-card" to="/projects"><h3>Projekte</h3><p>Referenzen und bisherige Arbeiten verwalten.</p></AppLink><AppLink className="card action-card" to="/integrations"><h3>Integrationen</h3><p>Google, Meta, Telegram und weitere Kanäle.</p></AppLink><AppLink className="card action-card" to="/profile"><h3>Betriebsprofil</h3><p>DFBK lernt deinen Betrieb einmalig kennen.</p></AppLink></div></PageShell>;
+  const { user } = useAuth();
+  const { projects, profile } = useUserArea();
+  if (projects.length === 0) return <EmptyState />;
+  const displayName = profile.name || user?.email.split('@')[0] || 'Willkommen';
+
+  return (
+    <div className="app-page">
+      <header className="app-page-heading app-page-heading-row"><div><span className="app-kicker">Übersicht</span><h1>Hallo, {displayName}</h1><p>Hier findest du deine letzten Arbeiten und kannst direkt weitermachen.</p></div><AppLink className="button app-primary-action" to="/app/new"><AppIcon name="plus" />Neues Projekt</AppLink></header>
+      <section className="dashboard-section"><div className="section-title-row"><div><h2>Letzte Projekte</h2><p>Deine zuletzt erstellten Inhalte.</p></div><AppLink className="quiet-link" to="/app/projects">Alle Projekte<AppIcon name="arrow" /></AppLink></div><div className="recent-projects">{projects.slice(0, 4).map(project => <ProjectCard project={project} compact key={project.id} />)}</div></section>
+      <section className="dashboard-help"><span><AppIcon name="spark" /></span><div><strong>Eine fertige Arbeit. Viele Möglichkeiten.</strong><p>Du machst die Arbeit. DFBK.app macht sie sichtbar.</p></div><AppLink className="quiet-link" to="/app/new">Content erstellen<AppIcon name="arrow" /></AppLink></section>
+    </div>
+  );
 }
