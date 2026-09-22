@@ -1,5 +1,8 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useAuth } from './AuthContext';
+import { ApiError } from '../lib/api';
+import { projectService } from '../services/projects';
+import type { MediaAsset, Project, ProjectStatus } from '../types/models';
 
 export type AppProjectStatus = 'Entwurf' | 'Content erstellt' | 'Fertig';
 export type ContentChannel = 'google' | 'social' | 'website';
@@ -11,6 +14,8 @@ export type AppProject = {
   title: string;
   description: string;
   createdAt: string;
+  updatedAt: string;
+  apiStatus: ProjectStatus;
   status: AppProjectStatus;
   originalImage: string;
   optimizedImage: string;
@@ -25,18 +30,21 @@ export type LocalProfile = {
 type NewProjectInput = {
   title?: string;
   description: string;
-  image: string;
 };
 
 type UserAreaContextValue = {
   projects: AppProject[];
+  projectsLoading: boolean;
+  projectsError: string | null;
   profile: LocalProfile;
-  createProject: (input: NewProjectInput) => AppProject;
+  reloadProjects: () => Promise<void>;
+  getProject: (id: string) => Promise<AppProject>;
+  createProject: (input: NewProjectInput) => Promise<AppProject>;
+  uploadProjectMedia: (projectId: string, file: File) => Promise<MediaAsset>;
   updateContent: (projectId: string, channel: ContentChannel, value: string) => void;
   updateProfile: (profile: LocalProfile) => void;
 };
 
-const PROJECTS_KEY = 'dfbk.user-area.projects.v1';
 const PROFILE_KEY = 'dfbk.user-area.profile.v1';
 const FALLBACK_IMAGE = '/visual/dfbk-showcase/assets/images/renovierung-after.webp';
 
@@ -66,46 +74,119 @@ function makeContent(description: string): ProjectContent {
   };
 }
 
+function toAppStatus(status: ProjectStatus): AppProjectStatus {
+  if (status === 'draft') return 'Entwurf';
+  if (status === 'processing') return 'Content erstellt';
+  return 'Fertig';
+}
+
+function toAppProject(project: Project): AppProject {
+  const description = project.description || '';
+  return {
+    ...project,
+    description,
+    apiStatus: project.status,
+    status: toAppStatus(project.status),
+    originalImage: FALLBACK_IMAGE,
+    optimizedImage: FALLBACK_IMAGE,
+    content: makeContent(description),
+  };
+}
+
+function projectLoadMessage(error: unknown) {
+  if (error instanceof ApiError && error.status === 401) return null;
+  return 'Etwas ist schiefgelaufen. Bitte versuche es erneut.';
+}
+
 export function UserAreaProvider({ children }: { children: ReactNode }) {
-  const { user } = useAuth();
+  const { user, refresh } = useAuth();
   const ownerId = user?.id || 'guest';
-  const projectsKey = `${PROJECTS_KEY}.${ownerId}`;
   const profileKey = `${PROFILE_KEY}.${ownerId}`;
   const [storageOwner, setStorageOwner] = useState(ownerId);
-  const [projects, setProjects] = useState<AppProject[]>(() => readStorage(projectsKey, []));
+  const [projects, setProjects] = useState<AppProject[]>([]);
+  const [projectsLoading, setProjectsLoading] = useState(false);
+  const [projectsError, setProjectsError] = useState<string | null>(null);
+  const [loadedProjectsOwner, setLoadedProjectsOwner] = useState<string | null>(null);
   const [profile, setProfile] = useState<LocalProfile>(() => readStorage(profileKey, { name: '', company: '' }));
 
   useEffect(() => {
     if (storageOwner === ownerId) return;
-    setProjects(readStorage(`${PROJECTS_KEY}.${ownerId}`, []));
     setProfile(readStorage(`${PROFILE_KEY}.${ownerId}`, { name: '', company: '' }));
     setStorageOwner(ownerId);
   }, [ownerId, storageOwner]);
 
   useEffect(() => {
     if (storageOwner !== ownerId) return;
-    try { window.localStorage.setItem(projectsKey, JSON.stringify(projects)); } catch { /* local preview can continue without persistence */ }
-  }, [ownerId, projects, projectsKey, storageOwner]);
-
-  useEffect(() => {
-    if (storageOwner !== ownerId) return;
     try { window.localStorage.setItem(profileKey, JSON.stringify(profile)); } catch { /* local preview can continue without persistence */ }
   }, [ownerId, profile, profileKey, storageOwner]);
 
-  function createProject(input: NewProjectInput) {
-    const project: AppProject = {
-      id: crypto.randomUUID(),
-      title: input.title?.trim() || makeTitle(input.description),
-      description: input.description.trim(),
-      createdAt: new Date().toISOString(),
-      status: 'Content erstellt',
-      originalImage: input.image || FALLBACK_IMAGE,
-      optimizedImage: input.image || FALLBACK_IMAGE,
-      content: makeContent(input.description),
-    };
-    setProjects(current => [project, ...current]);
-    return project;
-  }
+  const handleUnauthorized = useCallback(async (error: unknown) => {
+    if (error instanceof ApiError && error.status === 401) await refresh();
+  }, [refresh]);
+
+  const reloadProjects = useCallback(async () => {
+    if (!user) {
+      setProjects([]);
+      setProjectsError(null);
+      setProjectsLoading(false);
+      setLoadedProjectsOwner(null);
+      return;
+    }
+
+    setProjectsLoading(true);
+    setProjectsError(null);
+    try {
+      const result = await projectService.list();
+      setProjects(result.projects.map(toAppProject));
+    } catch (error) {
+      setProjectsError(projectLoadMessage(error));
+      await handleUnauthorized(error);
+    } finally {
+      setProjectsLoading(false);
+      setLoadedProjectsOwner(user.id);
+    }
+  }, [handleUnauthorized, user]);
+
+  useEffect(() => {
+    void reloadProjects();
+  }, [reloadProjects]);
+
+  const getProject = useCallback(async (id: string) => {
+    try {
+      const result = await projectService.get(id);
+      const project = toAppProject(result.project);
+      setProjects(current => [project, ...current.filter(item => item.id !== project.id)]);
+      return project;
+    } catch (error) {
+      await handleUnauthorized(error);
+      throw error;
+    }
+  }, [handleUnauthorized]);
+
+  const createProject = useCallback(async (input: NewProjectInput) => {
+    try {
+      const result = await projectService.create({
+        title: input.title?.trim() || makeTitle(input.description),
+        description: input.description.trim() || undefined,
+      });
+      const project = toAppProject(result.project);
+      setProjects(current => [project, ...current.filter(item => item.id !== project.id)]);
+      return project;
+    } catch (error) {
+      await handleUnauthorized(error);
+      throw error;
+    }
+  }, [handleUnauthorized]);
+
+  const uploadProjectMedia = useCallback(async (projectId: string, file: File) => {
+    try {
+      const result = await projectService.uploadMedia(projectId, file);
+      return result.media;
+    } catch (error) {
+      await handleUnauthorized(error);
+      throw error;
+    }
+  }, [handleUnauthorized]);
 
   function updateContent(projectId: string, channel: ContentChannel, value: string) {
     setProjects(current => current.map(project => project.id === projectId
@@ -117,7 +198,18 @@ export function UserAreaProvider({ children }: { children: ReactNode }) {
     setProfile(nextProfile);
   }
 
-  const value = useMemo(() => ({ projects, profile, createProject, updateContent, updateProfile }), [profile, projects]);
+  const value = useMemo(() => ({
+    projects,
+    projectsLoading: projectsLoading || Boolean(user && loadedProjectsOwner !== user.id),
+    projectsError,
+    profile,
+    reloadProjects,
+    getProject,
+    createProject,
+    uploadProjectMedia,
+    updateContent,
+    updateProfile,
+  }), [createProject, getProject, loadedProjectsOwner, profile, projects, projectsError, projectsLoading, reloadProjects, uploadProjectMedia, user]);
   return <UserAreaContext.Provider value={value}>{children}</UserAreaContext.Provider>;
 }
 

@@ -7,7 +7,10 @@ import { useUserArea } from '../contexts/UserAreaContext';
 
 export default function DashboardPage() {
   const { user } = useAuth();
-  const { projects, profile } = useUserArea();
+  const { projects, projectsLoading, projectsError, profile, reloadProjects } = useUserArea();
+
+  if (projectsLoading) return <div className="app-empty-card" aria-live="polite"><span className="processing-orb"><AppIcon name="spark" /></span><h1>Projekte werden geladen</h1></div>;
+  if (projectsError) return <div className="app-empty-card"><AppIcon name="folder" /><h1>Projekte konnten nicht geladen werden</h1><p>{projectsError}</p><button className="button" type="button" onClick={() => void reloadProjects()}>Erneut versuchen</button></div>;
   if (projects.length === 0) return <EmptyState />;
   const displayName = profile.name || user?.email.split('@')[0] || 'Willkommen';
 

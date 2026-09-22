@@ -23,21 +23,21 @@ export interface BusinessProfile {
 export interface MediaAsset {
   id: string;
   projectId: string;
-  storageKey: string;
+  mediaType: 'image';
+  role: 'original';
   mimeType: string;
-  width?: number;
-  height?: number;
+  sizeBytes: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Project {
   id: string;
-  userId: string;
-  title?: string;
-  location?: string;
-  trade?: string;
-  notes?: string;
+  title: string;
+  description: string | null;
   status: ProjectStatus;
   createdAt: string;
+  updatedAt: string;
 }
 
 export interface GeneratedContent {
