@@ -33,6 +33,57 @@ const features = [
   }
 ];
 
+function PraxisFeatureDemo() {
+  return (
+    <article className="feature-demo" data-feature-reveal>
+      <div className="feature-demo-window">
+        <header className="feature-demo-header">
+          <span className="feature-demo-brand"><span className="feature-demo-dot" />DFBK.app</span>
+          <span className="feature-demo-progress">01 / 06</span>
+        </header>
+
+        <div className="feature-demo-content">
+          <div className="feature-demo-photo-wrap">
+            <img
+              className="feature-demo-photo"
+              src="/visual/features/praxis-feature-photo.webp"
+              alt="Mitarbeiterin dokumentiert eine Arbeit in der Praxis"
+              draggable="false"
+            />
+            <span className="feature-demo-profession"><span aria-hidden="true">✚</span> Praxis</span>
+          </div>
+
+          <div className="feature-demo-actions" aria-label="Beispiel der Projekterfassung">
+            <div className="feature-demo-row feature-demo-row-blue">
+              <span className="feature-demo-icon" aria-hidden="true">⌾</span>
+              <span>Foto hinzufügen</span>
+              <span className="feature-demo-arrow" aria-hidden="true">›</span>
+            </div>
+            <div className="feature-demo-row feature-demo-row-amber">
+              <span className="feature-demo-icon" aria-hidden="true">≡</span>
+              <span>Text schreiben</span>
+              <span className="feature-demo-arrow" aria-hidden="true">›</span>
+            </div>
+            <div className="feature-demo-row feature-demo-row-green">
+              <span className="feature-demo-icon" aria-hidden="true">◉</span>
+              <span>Sprache aufnehmen</span>
+              <span className="feature-demo-arrow" aria-hidden="true">›</span>
+            </div>
+            <div className="feature-demo-next">Weiter</div>
+          </div>
+        </div>
+      </div>
+
+      <div className="feature-demo-copy">
+        <span className="feature-demo-title-icon" aria-hidden="true">◉</span>
+        <h3>Foto, Text oder Sprache</h3>
+        <p>Lade Fotos deiner Arbeit hoch und ergänze die wichtigsten Informationen per Text oder Sprache.</p>
+        <div className="feature-demo-note"><span aria-hidden="true" />Einfach dokumentieren. DFBK erledigt den Rest.</div>
+      </div>
+    </article>
+  );
+}
+
 export default function Features() {
   const listRef = useRef<HTMLDivElement>(null);
 
@@ -74,7 +125,8 @@ export default function Features() {
         <h2>DFBK.app macht Marketing einfacher</h2>
 
         <div className="feature-list" ref={listRef}>
-          {features.map((feature, index) => (
+          <PraxisFeatureDemo />
+          {features.slice(1).map((feature, index) => (
             <figure
               className="feature-item"
               data-feature-reveal
@@ -84,7 +136,7 @@ export default function Features() {
                 src={feature.src}
                 alt={`${feature.name} – Beispiel aus ${feature.profession}`}
                 draggable="false"
-                loading={index < 2 ? 'eager' : 'lazy'}
+                loading={index < 1 ? 'eager' : 'lazy'}
                 decoding="async"
                 width="1520"
                 height="1520"
