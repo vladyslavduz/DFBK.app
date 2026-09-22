@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useRef } from 'react';
+import { type ReactNode } from 'react';
 
 type FeatureShellProps = {
   step: string;
@@ -14,7 +14,7 @@ type FeatureShellProps = {
 
 function FeatureShell({ step, profession, professionIcon, photo, photoAlt, title, description, note, children }: FeatureShellProps) {
   return (
-    <article className="feature-demo" data-feature-reveal>
+    <article className="feature-demo" data-site-reveal>
       <div className="feature-demo-window">
         <header className="feature-demo-header">
           <span className="feature-demo-brand"><span className="feature-demo-dot" />DFBK.app</span>
@@ -134,32 +134,12 @@ function ActionsFeatureDemo() {
 }
 
 export default function Features() {
-  const listRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const list = listRef.current;
-    if (!list) return;
-    const slides = [...list.querySelectorAll<HTMLElement>('[data-feature-reveal]')];
-    const motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)');
-    if (motionPreference.matches) {
-      slides.forEach((slide) => slide.classList.add('is-visible'));
-      return;
-    }
-    list.classList.add('is-reveal-ready');
-    const observer = new IntersectionObserver(
-      (entries) => entries.forEach((entry) => entry.target.classList.toggle('is-visible', entry.isIntersecting)),
-      { threshold: 0.18, rootMargin: '-6% 0px -6% 0px' }
-    );
-    slides.forEach((slide) => observer.observe(slide));
-    return () => observer.disconnect();
-  }, []);
-
   return (
     <section id="features" className="section feature-slider-section">
       <div className="container">
         <span className="eyebrow">Funktionen</span>
         <h2>DFBK.app macht Marketing einfacher</h2>
-        <div className="feature-list" ref={listRef}>
+        <div className="feature-list">
           <PraxisFeatureDemo />
           <AnalysisFeatureDemo />
           <TextFeatureDemo />

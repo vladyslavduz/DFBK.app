@@ -279,16 +279,14 @@ h3 { letter-spacing: -.02em; }
   filter: blur(0);
 }
 
-.feature-list.is-reveal-ready .feature-item,
-.feature-list.is-reveal-ready .feature-demo {
+.site-reveal-item {
   opacity: .2;
   filter: blur(7px);
   transition: opacity .7s ease-out, filter .7s ease-out;
   will-change: opacity, filter;
 }
 
-.feature-list.is-reveal-ready .feature-item.is-visible,
-.feature-list.is-reveal-ready .feature-demo.is-visible {
+.site-reveal-item.is-visible {
   opacity: 1;
   filter: blur(0);
 }
@@ -436,8 +434,11 @@ h3 { letter-spacing: -.02em; }
 .feature-content-preview > div > span:nth-of-type(2) { width: 80%; }
 .feature-content-preview > div > span:nth-of-type(3) { width: 92%; }
 .feature-use-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-.feature-use-action { display: grid; min-height: 79px; place-items: center; align-content: center; gap: 7px; border-radius: 13px; color: var(--navy); transition: transform .16s ease, box-shadow .16s ease; }
+.feature-use-action { position: relative; display: grid; min-height: 79px; place-items: center; align-content: center; gap: 7px; overflow: hidden; border-radius: 13px; color: var(--navy); transition: transform .16s ease, box-shadow .16s ease; }
 .feature-use-action:hover { transform: translateY(-3px); box-shadow: 0 9px 18px rgba(16, 42, 67, .11); }
+.feature-use-action::after { content: ""; position: absolute; inset: 2px; border: 2px solid currentColor; border-radius: 11px; opacity: 0; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .55), 0 0 17px currentColor; pointer-events: none; animation: feature-card-glow 9s ease-in-out infinite; }
+.feature-use-action:nth-child(2)::after { animation-delay: 3s; }
+.feature-use-action:nth-child(3)::after { animation-delay: 6s; }
 .feature-use-action > span { font-size: 1.45rem; line-height: 1; animation: feature-pictogram-pulse 9s ease-in-out infinite; }
 .feature-use-action:nth-child(2) > span { animation-delay: 3s; }
 .feature-use-action:nth-child(3) > span { animation-delay: 6s; }
@@ -524,19 +525,18 @@ h3 { letter-spacing: -.02em; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .feature-list.is-reveal-ready .feature-item,
-  .feature-list.is-reveal-ready .feature-demo,
+  .site-reveal-item,
   .profession-fade-card { transition: none; }
 
   .auth-modal-backdrop, .auth-modal { animation: none; }
   .feature-analysis-track span { animation: none; opacity: 1; transform: scaleX(1); }
   .feature-channel-row .feature-check,
   .feature-project-card::after,
+  .feature-use-action::after,
   .feature-use-action > span { animation: none; }
   .feature-channel-row .feature-check { opacity: 1; transform: none; }
 
-  .feature-list.is-reveal-ready .feature-item,
-  .feature-list.is-reveal-ready .feature-demo {
+  .site-reveal-item {
     opacity: 1;
     filter: none;
   }
