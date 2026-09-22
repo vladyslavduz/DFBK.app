@@ -3,6 +3,21 @@ import { json, notImplemented } from '../lib/response';
 import { hashSessionToken } from '../lib/session';
 
 
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+
+const ALLOWED_IMAGE_TYPES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+]);
+
+const IMAGE_EXTENSIONS: Record<string, string> = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
+};
+
+
 type CreateProjectBody = {
   title?: unknown;
   description?: unknown;
@@ -19,6 +34,22 @@ type ProjectRow = {
   title: string;
   description: string | null;
   status: string;
+  created_at: string;
+  updated_at: string;
+};
+
+type ProjectOwnerRow = {
+  id: string;
+};
+
+type ProjectMediaRow = {
+  id: string;
+  project_id: string;
+  storage_key: string;
+  media_type: string;
+  role: string;
+  mime_type: string;
+  size_bytes: number;
   created_at: string;
   updated_at: string;
 };
@@ -121,6 +152,65 @@ function serializeProject(project: ProjectRow) {
     createdAt: project.created_at,
     updatedAt: project.updated_at,
   };
+}
+
+
+function serializeProjectMedia(media: ProjectMediaRow) {
+  return {
+    id: media.id,
+    projectId: media.project_id,
+    mediaType: media.media_type,
+    role: media.role,
+    mimeType: media.mime_type,
+    sizeBytes: media.size_bytes,
+    createdAt: media.created_at,
+    updatedAt: media.updated_at,
+  };
+}
+
+
+function hasValidImageSignature(
+  bytes: Uint8Array,
+  mimeType: string
+): boolean {
+  if (mimeType === 'image/jpeg') {
+    return (
+      bytes.length >= 3 &&
+      bytes[0] === 0xff &&
+      bytes[1] === 0xd8 &&
+      bytes[2] === 0xff
+    );
+  }
+
+  if (mimeType === 'image/png') {
+    return (
+      bytes.length >= 8 &&
+      bytes[0] === 0x89 &&
+      bytes[1] === 0x50 &&
+      bytes[2] === 0x4e &&
+      bytes[3] === 0x47 &&
+      bytes[4] === 0x0d &&
+      bytes[5] === 0x0a &&
+      bytes[6] === 0x1a &&
+      bytes[7] === 0x0a
+    );
+  }
+
+  if (mimeType === 'image/webp') {
+    return (
+      bytes.length >= 12 &&
+      bytes[0] === 0x52 &&
+      bytes[1] === 0x49 &&
+      bytes[2] === 0x46 &&
+      bytes[3] === 0x46 &&
+      bytes[8] === 0x57 &&
+      bytes[9] === 0x45 &&
+      bytes[10] === 0x42 &&
+      bytes[11] === 0x50
+    );
+  }
+
+  return false;
 }
 
 
@@ -369,6 +459,222 @@ async function getProjectById(
 }
 
 
+async function uploadProjectMedia(
+  request: Request,
+  env: Env,
+  projectId: string
+): Promise<Response> {
+  const authenticatedUser = await getAuthenticatedUserId(
+    request,
+    env
+  );
+
+  if (authenticatedUser instanceof Response) {
+    return authenticatedUser;
+  }
+
+  const project = await env.DB
+    .prepare(
+      `
+      SELECT id
+      FROM projects
+      WHERE id = ?1
+        AND user_id = ?2
+      LIMIT 1
+      `
+    )
+    .bind(projectId, authenticatedUser)
+    .first<ProjectOwnerRow>();
+
+  if (!project) {
+    return json(
+      { ok: false, error: 'PROJECT_NOT_FOUND' },
+      404
+    );
+  }
+
+  const contentType = request.headers.get('Content-Type') ?? '';
+
+  if (!contentType.toLowerCase().startsWith('multipart/form-data')) {
+    return json(
+      { ok: false, error: 'MULTIPART_FORM_DATA_REQUIRED' },
+      415
+    );
+  }
+
+  let formData: FormData;
+
+  try {
+    formData = await request.formData();
+  } catch {
+    return json(
+      { ok: false, error: 'INVALID_MULTIPART_FORM_DATA' },
+      400
+    );
+  }
+
+  const fileValue = formData.get('file');
+
+  if (!(fileValue instanceof File)) {
+    return json(
+      { ok: false, error: 'IMAGE_FILE_REQUIRED' },
+      400
+    );
+  }
+
+  if (!ALLOWED_IMAGE_TYPES.has(fileValue.type)) {
+    return json(
+      {
+        ok: false,
+        error: 'UNSUPPORTED_IMAGE_TYPE',
+        allowedTypes: Array.from(ALLOWED_IMAGE_TYPES),
+      },
+      415
+    );
+  }
+
+  if (fileValue.size <= 0) {
+    return json(
+      { ok: false, error: 'EMPTY_IMAGE_FILE' },
+      400
+    );
+  }
+
+  if (fileValue.size > MAX_IMAGE_BYTES) {
+    return json(
+      {
+        ok: false,
+        error: 'IMAGE_TOO_LARGE',
+        maxBytes: MAX_IMAGE_BYTES,
+      },
+      413
+    );
+  }
+
+  const fileBytes = new Uint8Array(
+    await fileValue.arrayBuffer()
+  );
+
+  if (!hasValidImageSignature(fileBytes, fileValue.type)) {
+    return json(
+      { ok: false, error: 'INVALID_IMAGE_SIGNATURE' },
+      415
+    );
+  }
+
+  const mediaId = crypto.randomUUID();
+  const extension = IMAGE_EXTENSIONS[fileValue.type];
+  const storageKey = [
+    'users',
+    authenticatedUser,
+    'projects',
+    projectId,
+    'original',
+    `${mediaId}.${extension}`,
+  ].join('/');
+
+  try {
+    await env.MEDIA.put(
+      storageKey,
+      fileBytes,
+      {
+        httpMetadata: {
+          contentType: fileValue.type,
+        },
+        customMetadata: {
+          projectId,
+          mediaId,
+          role: 'original',
+        },
+      }
+    );
+  } catch (error) {
+    console.error('PROJECT_MEDIA_R2_PUT_ERROR', error);
+
+    return json(
+      { ok: false, error: 'MEDIA_STORAGE_FAILED' },
+      500
+    );
+  }
+
+  try {
+    await env.DB
+      .prepare(
+        `
+        INSERT INTO project_media (
+          id,
+          project_id,
+          storage_key,
+          media_type,
+          role,
+          mime_type,
+          size_bytes
+        )
+        VALUES (?1, ?2, ?3, 'image', 'original', ?4, ?5)
+        `
+      )
+      .bind(
+        mediaId,
+        projectId,
+        storageKey,
+        fileValue.type,
+        fileValue.size
+      )
+      .run();
+
+    const media = await env.DB
+      .prepare(
+        `
+        SELECT
+          id,
+          project_id,
+          storage_key,
+          media_type,
+          role,
+          mime_type,
+          size_bytes,
+          created_at,
+          updated_at
+        FROM project_media
+        WHERE id = ?1
+          AND project_id = ?2
+        LIMIT 1
+        `
+      )
+      .bind(mediaId, projectId)
+      .first<ProjectMediaRow>();
+
+    if (!media) {
+      throw new Error('Created media record could not be read back');
+    }
+
+    return json(
+      {
+        ok: true,
+        media: serializeProjectMedia(media),
+      },
+      201
+    );
+  } catch (error) {
+    console.error('PROJECT_MEDIA_DB_ERROR', error);
+
+    try {
+      await env.MEDIA.delete(storageKey);
+    } catch (cleanupError) {
+      console.error(
+        'PROJECT_MEDIA_R2_CLEANUP_ERROR',
+        cleanupError
+      );
+    }
+
+    return json(
+      { ok: false, error: 'MEDIA_RECORD_CREATION_FAILED' },
+      500
+    );
+  }
+}
+
+
 export async function handleProjects(
   request: Request,
   env: Env,
@@ -386,6 +692,30 @@ export async function handleProjects(
     request.method === 'GET'
   ) {
     return listProjects(request, env);
+  }
+
+  const mediaMatch = pathname.match(
+    /^\/api\/projects\/([^/]+)\/media$/
+  );
+
+  if (
+    mediaMatch &&
+    request.method === 'POST'
+  ) {
+    const projectId = decodeURIComponent(mediaMatch[1]).trim();
+
+    if (!projectId) {
+      return json(
+        { ok: false, error: 'INVALID_PROJECT_ID' },
+        400
+      );
+    }
+
+    return uploadProjectMedia(
+      request,
+      env,
+      projectId
+    );
   }
 
   if (
@@ -426,7 +756,7 @@ export async function handleProjects(
   ) {
     return notImplemented(
       'media.upload',
-      ['R2_BINDING_TBD']
+      []
     );
   }
 
