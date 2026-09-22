@@ -112,6 +112,18 @@ async function getAuthenticatedUserId(
 }
 
 
+function serializeProject(project: ProjectRow) {
+  return {
+    id: project.id,
+    title: project.title,
+    description: project.description,
+    status: project.status,
+    createdAt: project.created_at,
+    updatedAt: project.updated_at,
+  };
+}
+
+
 async function createProject(
   request: Request,
   env: Env
@@ -221,14 +233,7 @@ async function createProject(
     return json(
       {
         ok: true,
-        project: {
-          id: project.id,
-          title: project.title,
-          description: project.description,
-          status: project.status,
-          createdAt: project.created_at,
-          updatedAt: project.updated_at,
-        },
+        project: serializeProject(project),
       },
       201
     );
@@ -246,6 +251,59 @@ async function createProject(
 }
 
 
+async function listProjects(
+  request: Request,
+  env: Env
+): Promise<Response> {
+  const authenticatedUser = await getAuthenticatedUserId(
+    request,
+    env
+  );
+
+  if (authenticatedUser instanceof Response) {
+    return authenticatedUser;
+  }
+
+  try {
+    const result = await env.DB
+      .prepare(
+        `
+        SELECT
+          id,
+          title,
+          description,
+          status,
+          created_at,
+          updated_at
+        FROM projects
+        WHERE user_id = ?1
+        ORDER BY created_at DESC
+        `
+      )
+      .bind(authenticatedUser)
+      .all<ProjectRow>();
+
+    return json(
+      {
+        ok: true,
+        projects: result.results.map(serializeProject),
+      },
+      200
+    );
+  } catch (error) {
+    console.error(
+      'PROJECT_LIST_DB_ERROR',
+      error
+    );
+
+    return json(
+      { ok: false, error: 'PROJECT_LIST_FAILED' },
+      500
+    );
+  }
+}
+
+
 export async function handleProjects(
   request: Request,
   env: Env,
@@ -256,6 +314,13 @@ export async function handleProjects(
     request.method === 'POST'
   ) {
     return createProject(request, env);
+  }
+
+  if (
+    pathname === '/api/projects' &&
+    request.method === 'GET'
+  ) {
+    return listProjects(request, env);
   }
 
   if (
