@@ -42,7 +42,7 @@ export default {
     const response =
       (await handleAuth(request, env, url.pathname)) ||
       handleAI(url.pathname) ||
-      handleProjects(url.pathname) ||
+      (await handleProjects(request, env, url.pathname)) ||
       handlePublish(url.pathname) ||
       handleIntegrations(url.pathname) ||
       handleBilling(url.pathname) ||
