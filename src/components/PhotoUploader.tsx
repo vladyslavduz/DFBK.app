@@ -23,8 +23,8 @@ export default function PhotoUploader({ preview, onSelect, onContinue }: Props) 
           <button className="photo-action" type="button" onClick={() => uploadRef.current?.click()}><span><AppIcon name="upload" /></span><strong>Foto hochladen</strong><small>Vorhandenes Bild auswählen</small></button>
         </div>
       )}
-      <input ref={cameraRef} className="visually-hidden" type="file" accept="image/*" capture="environment" onChange={event => selectFile(event.target.files)} />
-      <input ref={uploadRef} className="visually-hidden" type="file" accept="image/*" onChange={event => selectFile(event.target.files)} />
+      <input ref={cameraRef} className="visually-hidden" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" onChange={event => { selectFile(event.target.files); event.currentTarget.value = ''; }} />
+      <input ref={uploadRef} className="visually-hidden" type="file" accept="image/jpeg,image/png,image/webp" onChange={event => { selectFile(event.target.files); event.currentTarget.value = ''; }} />
       <div className="wizard-footer"><span>{preview ? 'Foto ausgewählt' : 'Eine Hauptaufnahme reicht für den Start.'}</span><button className="button" type="button" disabled={!preview} onClick={onContinue}>Weiter<AppIcon name="arrow" /></button></div>
     </section>
   );

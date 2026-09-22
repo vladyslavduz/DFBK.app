@@ -132,6 +132,9 @@
 .processing-state li > span { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 50%; background: #EDF2F7; font-size: .78rem; font-weight: 900; }
 .processing-state li.is-active { border-color: #CFE0FA; color: var(--navy); background: #F3F7FF; }
 .processing-state li.is-active > span { color: #fff; background: var(--blue); }
+.processing-error { width: min(520px,100%); display: grid; justify-items: center; gap: 14px; padding: 16px; border: 1px solid rgba(180,35,24,.22); border-radius: 14px; color: var(--error); background: rgba(180,35,24,.06); }
+.processing-error p { margin: 0; }
+.processing-error > div { display: flex; gap: 10px; }
 .result-check { width: 60px; height: 60px; display: grid; place-items: center; margin: 0 auto 18px; border-radius: 50%; color: #fff; background: var(--success); font-size: 1.5rem; }
 .result-photo-summary { display: grid; grid-template-columns: 1fr 1fr; align-items: center; gap: 28px; padding: 22px; border: 1px solid var(--border); border-radius: 22px; background: #fff; box-shadow: var(--shadow-soft); }
 .result-photo-summary img { width: 100%; height: 330px; object-fit: cover; border-radius: 17px; }
