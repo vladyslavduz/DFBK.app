@@ -304,6 +304,71 @@ async function listProjects(
 }
 
 
+async function getProjectById(
+  request: Request,
+  env: Env,
+  projectId: string
+): Promise<Response> {
+  const authenticatedUser = await getAuthenticatedUserId(
+    request,
+    env
+  );
+
+  if (authenticatedUser instanceof Response) {
+    return authenticatedUser;
+  }
+
+  try {
+    const project = await env.DB
+      .prepare(
+        `
+        SELECT
+          id,
+          title,
+          description,
+          status,
+          created_at,
+          updated_at
+        FROM projects
+        WHERE id = ?1
+          AND user_id = ?2
+        LIMIT 1
+        `
+      )
+      .bind(
+        projectId,
+        authenticatedUser
+      )
+      .first<ProjectRow>();
+
+    if (!project) {
+      return json(
+        { ok: false, error: 'PROJECT_NOT_FOUND' },
+        404
+      );
+    }
+
+    return json(
+      {
+        ok: true,
+        project: serializeProject(project),
+      },
+      200
+    );
+  } catch (error) {
+    console.error(
+      'PROJECT_GET_DB_ERROR',
+      error
+    );
+
+    return json(
+      { ok: false, error: 'PROJECT_FETCH_FAILED' },
+      500
+    );
+  }
+}
+
+
 export async function handleProjects(
   request: Request,
   env: Env,
@@ -321,6 +386,28 @@ export async function handleProjects(
     request.method === 'GET'
   ) {
     return listProjects(request, env);
+  }
+
+  if (
+    request.method === 'GET' &&
+    pathname.startsWith('/api/projects/')
+  ) {
+    const projectId = decodeURIComponent(
+      pathname.slice('/api/projects/'.length)
+    ).trim();
+
+    if (!projectId || projectId.includes('/')) {
+      return json(
+        { ok: false, error: 'INVALID_PROJECT_ID' },
+        400
+      );
+    }
+
+    return getProjectById(
+      request,
+      env,
+      projectId
+    );
   }
 
   if (
