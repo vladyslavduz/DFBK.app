@@ -82,13 +82,17 @@ function toAppStatus(status: ProjectStatus): AppProjectStatus {
 
 function toAppProject(project: Project): AppProject {
   const description = project.description || '';
+  const imageUrl = project.media
+    ? `/api/projects/${encodeURIComponent(project.id)}/media/${encodeURIComponent(project.media.id)}`
+    : FALLBACK_IMAGE;
+
   return {
     ...project,
     description,
     apiStatus: project.status,
     status: toAppStatus(project.status),
-    originalImage: FALLBACK_IMAGE,
-    optimizedImage: FALLBACK_IMAGE,
+    originalImage: imageUrl,
+    optimizedImage: imageUrl,
     content: makeContent(description),
   };
 }
@@ -181,6 +185,10 @@ export function UserAreaProvider({ children }: { children: ReactNode }) {
   const uploadProjectMedia = useCallback(async (projectId: string, file: File) => {
     try {
       const result = await projectService.uploadMedia(projectId, file);
+      const imageUrl = `/api/projects/${encodeURIComponent(result.media.projectId)}/media/${encodeURIComponent(result.media.id)}`;
+      setProjects(current => current.map(project => project.id === result.media.projectId
+        ? { ...project, originalImage: imageUrl, optimizedImage: imageUrl }
+        : project));
       return result.media;
     } catch (error) {
       await handleUnauthorized(error);

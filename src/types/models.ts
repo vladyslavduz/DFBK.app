@@ -38,6 +38,10 @@ export interface Project {
   status: ProjectStatus;
   createdAt: string;
   updatedAt: string;
+  media: {
+    id: string;
+    mimeType: string;
+  } | null;
 }
 
 export interface GeneratedContent {
