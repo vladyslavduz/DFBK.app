@@ -36,6 +36,8 @@ type ProjectRow = {
   status: string;
   created_at: string;
   updated_at: string;
+  media_id: string | null;
+  media_mime_type: string | null;
 };
 
 type ProjectOwnerRow = {
@@ -52,6 +54,14 @@ type ProjectMediaRow = {
   size_bytes: number;
   created_at: string;
   updated_at: string;
+};
+
+
+type MediaReadRow = {
+  storage_key: string;
+  mime_type: string;
+  size_bytes: number;
+  role: string;
 };
 
 
@@ -151,6 +161,12 @@ function serializeProject(project: ProjectRow) {
     status: project.status,
     createdAt: project.created_at,
     updatedAt: project.updated_at,
+    media: project.media_id && project.media_mime_type
+      ? {
+          id: project.media_id,
+          mimeType: project.media_mime_type,
+        }
+      : null,
   };
 }
 
@@ -298,15 +314,17 @@ async function createProject(
       .prepare(
         `
         SELECT
-          id,
-          title,
-          description,
-          status,
-          created_at,
-          updated_at
-        FROM projects
-        WHERE id = ?1
-          AND user_id = ?2
+          p.id,
+          p.title,
+          p.description,
+          p.status,
+          p.created_at,
+          p.updated_at,
+          NULL AS media_id,
+          NULL AS media_mime_type
+        FROM projects p
+        WHERE p.id = ?1
+          AND p.user_id = ?2
         LIMIT 1
         `
       )
@@ -359,15 +377,27 @@ async function listProjects(
       .prepare(
         `
         SELECT
-          id,
-          title,
-          description,
-          status,
-          created_at,
-          updated_at
-        FROM projects
-        WHERE user_id = ?1
-        ORDER BY created_at DESC
+          p.id,
+          p.title,
+          p.description,
+          p.status,
+          p.created_at,
+          p.updated_at,
+          pm.id AS media_id,
+          pm.mime_type AS media_mime_type
+        FROM projects p
+        LEFT JOIN project_media pm
+          ON pm.id = (
+            SELECT pm2.id
+            FROM project_media pm2
+            WHERE pm2.project_id = p.id
+              AND pm2.role = 'original'
+              AND pm2.media_type = 'image'
+            ORDER BY pm2.created_at DESC, pm2.id DESC
+            LIMIT 1
+          )
+        WHERE p.user_id = ?1
+        ORDER BY p.created_at DESC
         `
       )
       .bind(authenticatedUser)
@@ -413,15 +443,27 @@ async function getProjectById(
       .prepare(
         `
         SELECT
-          id,
-          title,
-          description,
-          status,
-          created_at,
-          updated_at
-        FROM projects
-        WHERE id = ?1
-          AND user_id = ?2
+          p.id,
+          p.title,
+          p.description,
+          p.status,
+          p.created_at,
+          p.updated_at,
+          pm.id AS media_id,
+          pm.mime_type AS media_mime_type
+        FROM projects p
+        LEFT JOIN project_media pm
+          ON pm.id = (
+            SELECT pm2.id
+            FROM project_media pm2
+            WHERE pm2.project_id = p.id
+              AND pm2.role = 'original'
+              AND pm2.media_type = 'image'
+            ORDER BY pm2.created_at DESC, pm2.id DESC
+            LIMIT 1
+          )
+        WHERE p.id = ?1
+          AND p.user_id = ?2
         LIMIT 1
         `
       )
@@ -456,6 +498,99 @@ async function getProjectById(
       500
     );
   }
+}
+
+
+async function readProjectMedia(
+  request: Request,
+  env: Env,
+  projectId: string,
+  mediaId: string
+): Promise<Response> {
+  const authenticatedUser = await getAuthenticatedUserId(
+    request,
+    env
+  );
+
+  if (authenticatedUser instanceof Response) {
+    return authenticatedUser;
+  }
+
+  const project = await env.DB
+    .prepare(
+      `
+      SELECT id
+      FROM projects
+      WHERE id = ?1
+        AND user_id = ?2
+      LIMIT 1
+      `
+    )
+    .bind(projectId, authenticatedUser)
+    .first<ProjectOwnerRow>();
+
+  if (!project) {
+    return json(
+      { ok: false, error: 'PROJECT_NOT_FOUND' },
+      404
+    );
+  }
+
+  const media = await env.DB
+    .prepare(
+      `
+      SELECT
+        storage_key,
+        mime_type,
+        size_bytes,
+        role
+      FROM project_media
+      WHERE id = ?1
+        AND project_id = ?2
+        AND media_type = 'image'
+      LIMIT 1
+      `
+    )
+    .bind(mediaId, projectId)
+    .first<MediaReadRow>();
+
+  if (!media) {
+    return json(
+      { ok: false, error: 'MEDIA_NOT_FOUND' },
+      404
+    );
+  }
+
+  let object: R2ObjectBody | null;
+
+  try {
+    object = await env.MEDIA.get(media.storage_key);
+  } catch (error) {
+    console.error('PROJECT_MEDIA_R2_GET_ERROR', error);
+
+    return json(
+      { ok: false, error: 'MEDIA_READ_FAILED' },
+      500
+    );
+  }
+
+  if (!object) {
+    return json(
+      { ok: false, error: 'MEDIA_OBJECT_NOT_FOUND' },
+      404
+    );
+  }
+
+  const headers = new Headers();
+  headers.set('Content-Type', media.mime_type);
+  headers.set('Content-Length', String(object.size ?? media.size_bytes));
+  headers.set('Cache-Control', 'private, max-age=3600');
+  headers.set('X-Content-Type-Options', 'nosniff');
+
+  return new Response(object.body, {
+    status: 200,
+    headers,
+  });
 }
 
 
@@ -694,15 +829,41 @@ export async function handleProjects(
     return listProjects(request, env);
   }
 
-  const mediaMatch = pathname.match(
+  const mediaReadMatch = pathname.match(
+    /^\/api\/projects\/([^/]+)\/media\/([^/]+)$/
+  );
+
+  if (
+    mediaReadMatch &&
+    request.method === 'GET'
+  ) {
+    const projectId = decodeURIComponent(mediaReadMatch[1]).trim();
+    const mediaId = decodeURIComponent(mediaReadMatch[2]).trim();
+
+    if (!projectId || !mediaId) {
+      return json(
+        { ok: false, error: 'INVALID_MEDIA_PATH' },
+        400
+      );
+    }
+
+    return readProjectMedia(
+      request,
+      env,
+      projectId,
+      mediaId
+    );
+  }
+
+  const mediaUploadMatch = pathname.match(
     /^\/api\/projects\/([^/]+)\/media$/
   );
 
   if (
-    mediaMatch &&
+    mediaUploadMatch &&
     request.method === 'POST'
   ) {
-    const projectId = decodeURIComponent(mediaMatch[1]).trim();
+    const projectId = decodeURIComponent(mediaUploadMatch[1]).trim();
 
     if (!projectId) {
       return json(
