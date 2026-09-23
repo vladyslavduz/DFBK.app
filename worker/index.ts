@@ -26,6 +26,18 @@ export default {
       });
     }
 
+    if (
+      env.PREVIEW_READ_ONLY === 'true' &&
+      url.pathname.startsWith('/api/projects') &&
+      request.method !== 'GET' &&
+      request.method !== 'OPTIONS'
+    ) {
+      return json(
+        { ok: false, error: 'PREVIEW_READ_ONLY' },
+        403
+      );
+    }
+
     if (request.method === 'OPTIONS') {
       return new Response(null, {
         status: 204,
