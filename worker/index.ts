@@ -2,6 +2,7 @@ import type { Env } from './lib/env';
 import { json } from './lib/response';
 import { handleAuth } from './routes/auth';
 import { handleAI } from './routes/ai';
+import { handleProjectContent } from './routes/project-content';
 import { handleProjects } from './routes/projects';
 import { handlePublish } from './routes/publish';
 import { handleIntegrations } from './routes/integrations';
@@ -42,6 +43,7 @@ export default {
     const response =
       (await handleAuth(request, env, url.pathname)) ||
       handleAI(url.pathname) ||
+      (await handleProjectContent(request, env, url.pathname)) ||
       (await handleProjects(request, env, url.pathname)) ||
       handlePublish(url.pathname) ||
       handleIntegrations(url.pathname) ||
