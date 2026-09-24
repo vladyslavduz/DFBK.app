@@ -3,6 +3,7 @@ import { json } from './lib/response';
 import { handleAuth } from './routes/auth';
 import { handleAI } from './routes/ai';
 import { handleProjectContent } from './routes/project-content';
+import { handleProjectGeneration } from './routes/project-generation';
 import { handleProjects } from './routes/projects';
 import { handlePublish } from './routes/publish';
 import { handleIntegrations } from './routes/integrations';
@@ -44,6 +45,7 @@ export default {
       (await handleAuth(request, env, url.pathname)) ||
       handleAI(url.pathname) ||
       (await handleProjectContent(request, env, url.pathname)) ||
+      (await handleProjectGeneration(request, env, url.pathname)) ||
       (await handleProjects(request, env, url.pathname)) ||
       handlePublish(url.pathname) ||
       handleIntegrations(url.pathname) ||
