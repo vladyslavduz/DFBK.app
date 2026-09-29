@@ -44,6 +44,17 @@ export interface Project {
   } | null;
 }
 
+export interface ProjectGeneratedContent {
+  googleBusiness: string | null;
+  socialMedia: string | null;
+  websiteReference: string | null;
+}
+
+export type ProjectContentResponse = {
+  ok: true;
+  content: ProjectGeneratedContent | null;
+};
+
 export interface GeneratedContent {
   id: string;
   projectId: string;

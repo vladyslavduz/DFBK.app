@@ -1,38 +1,79 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import AppIcon from '../components/AppIcon';
 import AppLink from '../components/AppLink';
 import ChannelCard from '../components/ChannelCard';
-import { useUserArea, type AppProject, type ContentChannel } from '../contexts/UserAreaContext';
+import ProcessingState from '../components/ProcessingState';
+import {
+  projectStatusLabel,
+  useUserArea,
+  type AppProject,
+  type ContentChannel,
+} from '../contexts/UserAreaContext';
 import { ApiError } from '../lib/api';
+import { projectGenerationErrorMessage } from '../lib/project-generation';
 
 export default function ProjectDetailPage({ id }: { id: string }) {
-  const { getProject, updateContent } = useUserArea();
+  const { generateProjectContent, getProject, getProjectContent, updateContent } = useUserArea();
   const [imageMode, setImageMode] = useState<'optimized' | 'original'>('optimized');
   const [project, setProject] = useState<AppProject | null>(null);
   const [loading, setLoading] = useState(true);
+  const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<'not-found' | 'generic' | null>(null);
+  const [generationError, setGenerationError] = useState('');
+  const generatingRef = useRef(false);
 
   const loadProject = useCallback(async () => {
     setLoading(true);
     setError(null);
+    setGenerationError('');
     try {
-      setProject(await getProject(id));
+      const loadedProject = await getProject(id);
+      const content = await getProjectContent(id);
+      setProject({ ...loadedProject, content });
     } catch (requestError) {
       setProject(null);
       setError(requestError instanceof ApiError && requestError.code === 'PROJECT_NOT_FOUND' ? 'not-found' : 'generic');
     } finally {
       setLoading(false);
     }
-  }, [getProject, id]);
+  }, [getProject, getProjectContent, id]);
 
   useEffect(() => {
     void loadProject();
   }, [loadProject]);
 
+  const generate = useCallback(async () => {
+    if (generatingRef.current || !project) return;
+    generatingRef.current = true;
+    setGenerating(true);
+    setGenerationError('');
+    setProject(current => current ? { ...current, status: 'processing' } : current);
+
+    try {
+      await generateProjectContent(project.id);
+      const content = await getProjectContent(project.id);
+      if (!content) throw new ApiError(500, 'PROJECT_CONTENT_UNAVAILABLE');
+      setProject(current => current ? { ...current, status: 'ready', content } : current);
+    } catch (requestError) {
+      setGenerationError(projectGenerationErrorMessage(requestError));
+      try {
+        const savedProject = await getProject(project.id);
+        setProject({ ...savedProject, content: project.content });
+      } catch {
+        setProject(current => current ? { ...current, status: 'processing' } : current);
+      }
+    } finally {
+      generatingRef.current = false;
+      setGenerating(false);
+    }
+  }, [generateProjectContent, getProject, getProjectContent, project]);
+
   function changeContent(channel: ContentChannel, value: string) {
-    if (!project) return;
+    if (!project?.content) return;
     updateContent(project.id, channel, value);
-    setProject(current => current ? { ...current, content: { ...current.content, [channel]: value } } : current);
+    setProject(current => current?.content
+      ? { ...current, content: { ...current.content, [channel]: value } }
+      : current);
   }
 
   if (loading) return <div className="app-page"><div className="app-empty-card" aria-live="polite"><span className="processing-orb"><AppIcon name="spark" /></span><h1>Projekt wird geladen</h1></div></div>;
@@ -42,14 +83,51 @@ export default function ProjectDetailPage({ id }: { id: string }) {
   if (error === 'not-found' || !project) return <div className="app-page"><div className="app-empty-card"><AppIcon name="folder" /><h1>Projekt nicht gefunden</h1><p>Dieses Projekt ist nicht verfügbar oder wurde bereits entfernt.</p><AppLink className="button" to="/app/projects">Zu meinen Projekten</AppLink></div></div>;
 
   const image = imageMode === 'optimized' ? project.optimizedImage : project.originalImage;
+  const hasContent = Boolean(project.content);
+  const showContent = hasContent && ['ready', 'approved', 'published'].includes(project.status);
+
   return (
     <div className="app-page">
       <AppLink className="back-link" to="/app/projects">← Meine Projekte</AppLink>
-      <header className="app-page-heading project-detail-heading"><div><span className={`project-status status-${project.status.toLowerCase().replace(' ', '-')}`}><AppIcon name="check" />{project.status}</span><h1>{project.title}</h1><p>{new Intl.DateTimeFormat('de-DE', { dateStyle: 'long' }).format(new Date(project.createdAt))}</p></div></header>
+      <header className="app-page-heading project-detail-heading"><div><span className={`project-status status-${project.status}`}><AppIcon name="check" />{projectStatusLabel(project.status)}</span><h1>{project.title}</h1><p>{new Intl.DateTimeFormat('de-DE', { dateStyle: 'long' }).format(new Date(project.createdAt))}</p></div></header>
       <section className="project-image-card"><div className="image-toggle"><button className={imageMode === 'original' ? 'is-active' : ''} onClick={() => setImageMode('original')} type="button">Original</button><button className={imageMode === 'optimized' ? 'is-active' : ''} onClick={() => setImageMode('optimized')} type="button">Optimiert</button></div><img className={imageMode === 'optimized' ? 'is-optimized' : ''} src={image} alt="Projektaufnahme" /><div className="project-image-actions"><a className="button button-secondary" href={image} download="dfbk-projektbild"><AppIcon name="download" />Herunterladen</a></div></section>
       <section className="project-description"><span className="app-kicker">Beschreibung</span><h2>Über diese Arbeit</h2><p>{project.description}</p></section>
-      <section><div className="section-title-row"><div><span className="app-kicker">Erstellte Inhalte</span><h2>Fertig für deine Kunden</h2></div></div><div className="channel-list">{(['google', 'social', 'website'] as const).map(channel => <ChannelCard channel={channel} value={project.content[channel]} onChange={value => changeContent(channel, value)} key={channel} />)}</div></section>
-      <section className="visibility-panel"><div><span className="app-kicker">Sichtbar werden</span><h2>Content verwenden</h2><p>Kopiere deine Texte und lade das Bild für Website, Google oder Social Media herunter.</p></div><div className="channel-pills"><span>Google</span><span>Website</span><span>Instagram</span><span>Facebook</span></div></section>
+
+      {project.status === 'processing' && <ProcessingState error={generationError} retrying={generating} onReload={() => void loadProject()} />}
+
+      {project.status === 'failed' && (
+        <section className="generation-action-card" role="alert">
+          <span className="processing-orb"><AppIcon name="spark" /></span>
+          <h2>Die Inhalte konnten nicht erstellt werden</h2>
+          <p>{generationError || 'Bitte versuche die Erstellung noch einmal.'}</p>
+          <button className="button" type="button" disabled={generating} onClick={() => void generate()}>{generating ? 'DFBK.app erstellt deine Inhalte …' : 'Erneut erstellen'}</button>
+        </section>
+      )}
+
+      {project.status === 'draft' && (
+        <section className="generation-action-card">
+          <span className="processing-orb"><AppIcon name="spark" /></span>
+          <h2>Content für dieses Projekt erstellen</h2>
+          <p>DFBK.app erstellt drei passende Texte aus deinem Foto und deiner Beschreibung.</p>
+          {generationError && <p className="generation-error" role="alert">{generationError}</p>}
+          <button className="button" type="button" disabled={generating} onClick={() => void generate()}>{generating ? 'DFBK.app erstellt deine Inhalte …' : 'Content erstellen'}</button>
+        </section>
+      )}
+
+      {project.status === 'ready' && !hasContent && (
+        <section className="generation-action-card" role="alert">
+          <h2>Gespeicherte Inhalte konnten nicht geladen werden</h2>
+          <p>Bitte lade das Projekt noch einmal.</p>
+          <button className="button" type="button" onClick={() => void loadProject()}>Erneut laden</button>
+        </section>
+      )}
+
+      {showContent && project.content && (
+        <>
+          <section><div className="section-title-row"><div><span className="app-kicker">Erstellte Inhalte</span><h2>Fertig für deine Kunden</h2></div></div><div className="channel-list">{(['google', 'social', 'website'] as const).map(channel => <ChannelCard channel={channel} value={project.content?.[channel] || ''} onChange={value => changeContent(channel, value)} key={channel} />)}</div></section>
+          <section className="visibility-panel"><div><span className="app-kicker">Sichtbar werden</span><h2>Content verwenden</h2><p>Kopiere deine Texte und lade das Bild für Website, Google oder Social Media herunter.</p></div><div className="channel-pills"><span>Google</span><span>Website</span><span>Instagram</span><span>Facebook</span></div></section>
+        </>
+      )}
     </div>
   );
 }

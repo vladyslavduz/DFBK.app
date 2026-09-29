@@ -25,7 +25,7 @@ export default function DescriptionInput({ value, onChange, onBack, onContinue }
         <button className={`voice-button${recording ? ' is-recording' : ''}`} type="button" onClick={() => setRecording(current => !current)} aria-pressed={recording}><AppIcon name="mic" /><span>{recording ? 'Aufnahme läuft…' : 'Aufnahme starten'}</span></button>
       </div>
       {voiceNote && <p className="inline-notice" role="status">{voiceNote}</p>}
-      <div className="wizard-footer"><button className="text-button" type="button" onClick={onBack}>Zurück</button><button className="button" type="button" disabled={!value.trim() && !voiceNote} onClick={onContinue}>Content erstellen<AppIcon name="arrow" /></button></div>
+      <div className="wizard-footer"><button className="text-button" type="button" onClick={onBack}>Zurück</button><button className="button" type="button" disabled={!value.trim()} onClick={onContinue}>Content erstellen<AppIcon name="arrow" /></button></div>
     </section>
   );
 }

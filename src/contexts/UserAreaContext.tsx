@@ -2,9 +2,8 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { useAuth } from './AuthContext';
 import { ApiError } from '../lib/api';
 import { projectService } from '../services/projects';
-import type { MediaAsset, Project, ProjectStatus } from '../types/models';
+import type { MediaAsset, Project, ProjectGeneratedContent, ProjectStatus } from '../types/models';
 
-export type AppProjectStatus = 'Entwurf' | 'Content erstellt' | 'Fertig';
 export type ContentChannel = 'google' | 'social' | 'website';
 
 export type ProjectContent = Record<ContentChannel, string>;
@@ -15,11 +14,10 @@ export type AppProject = {
   description: string;
   createdAt: string;
   updatedAt: string;
-  apiStatus: ProjectStatus;
-  status: AppProjectStatus;
+  status: ProjectStatus;
   originalImage: string;
   optimizedImage: string;
-  content: ProjectContent;
+  content: ProjectContent | null;
 };
 
 export type LocalProfile = {
@@ -39,6 +37,8 @@ type UserAreaContextValue = {
   profile: LocalProfile;
   reloadProjects: () => Promise<void>;
   getProject: (id: string) => Promise<AppProject>;
+  getProjectContent: (id: string) => Promise<ProjectContent | null>;
+  generateProjectContent: (id: string) => Promise<void>;
   createProject: (input: NewProjectInput) => Promise<AppProject>;
   uploadProjectMedia: (projectId: string, file: File) => Promise<MediaAsset>;
   updateContent: (projectId: string, channel: ContentChannel, value: string) => void;
@@ -65,19 +65,19 @@ function makeTitle(description: string) {
   return firstSentence.length > 48 ? `${firstSentence.slice(0, 45)}…` : firstSentence;
 }
 
-function makeContent(description: string): ProjectContent {
-  const detail = description.trim() || 'Eine Arbeit wurde sorgfältig und fachgerecht abgeschlossen.';
-  return {
-    google: `${detail}\n\nDas Ergebnis ist fertig und bereit, sichtbar zu werden. Kontaktiere uns gerne für dein nächstes Projekt.`,
-    social: `Fertiggestellt ✓\n\n${detail}\n\nDu planst etwas Ähnliches? Schreib uns gerne eine Nachricht.`,
-    website: `${detail}\n\nBei diesem Projekt standen eine saubere Ausführung, verlässliche Abläufe und ein überzeugendes Ergebnis im Mittelpunkt.`,
-  };
-}
+function toProjectContent(content: ProjectGeneratedContent | null): ProjectContent | null {
+  if (
+    !content ||
+    typeof content.googleBusiness !== 'string' ||
+    typeof content.socialMedia !== 'string' ||
+    typeof content.websiteReference !== 'string'
+  ) return null;
 
-function toAppStatus(status: ProjectStatus): AppProjectStatus {
-  if (status === 'draft') return 'Entwurf';
-  if (status === 'processing') return 'Content erstellt';
-  return 'Fertig';
+  return {
+    google: content.googleBusiness,
+    social: content.socialMedia,
+    website: content.websiteReference,
+  };
 }
 
 function toAppProject(project: Project): AppProject {
@@ -89,12 +89,18 @@ function toAppProject(project: Project): AppProject {
   return {
     ...project,
     description,
-    apiStatus: project.status,
-    status: toAppStatus(project.status),
     originalImage: imageUrl,
     optimizedImage: imageUrl,
-    content: makeContent(description),
+    content: null,
   };
+}
+
+export function projectStatusLabel(status: ProjectStatus) {
+  if (status === 'draft') return 'Entwurf';
+  if (status === 'processing') return 'Wird erstellt';
+  if (status === 'failed') return 'Fehler';
+  if (status === 'published') return 'Veröffentlicht';
+  return 'Content erstellt';
 }
 
 function projectLoadMessage(error: unknown) {
@@ -182,6 +188,30 @@ export function UserAreaProvider({ children }: { children: ReactNode }) {
     }
   }, [handleUnauthorized]);
 
+  const getProjectContent = useCallback(async (id: string) => {
+    try {
+      const result = await projectService.getProjectContent(id);
+      const content = toProjectContent(result.content);
+      setProjects(current => current.map(project => project.id === id ? { ...project, content } : project));
+      return content;
+    } catch (error) {
+      await handleUnauthorized(error);
+      throw error;
+    }
+  }, [handleUnauthorized]);
+
+  const generateProjectContent = useCallback(async (id: string) => {
+    try {
+      await projectService.generateProjectContent(id);
+      setProjects(current => current.map(project => project.id === id
+        ? { ...project, status: 'ready' }
+        : project));
+    } catch (error) {
+      await handleUnauthorized(error);
+      throw error;
+    }
+  }, [handleUnauthorized]);
+
   const uploadProjectMedia = useCallback(async (projectId: string, file: File) => {
     try {
       const result = await projectService.uploadMedia(projectId, file);
@@ -198,7 +228,9 @@ export function UserAreaProvider({ children }: { children: ReactNode }) {
 
   function updateContent(projectId: string, channel: ContentChannel, value: string) {
     setProjects(current => current.map(project => project.id === projectId
-      ? { ...project, content: { ...project.content, [channel]: value } }
+      ? project.content
+        ? { ...project, content: { ...project.content, [channel]: value } }
+        : project
       : project));
   }
 
@@ -213,11 +245,13 @@ export function UserAreaProvider({ children }: { children: ReactNode }) {
     profile,
     reloadProjects,
     getProject,
+    getProjectContent,
+    generateProjectContent,
     createProject,
     uploadProjectMedia,
     updateContent,
     updateProfile,
-  }), [createProject, getProject, loadedProjectsOwner, profile, projects, projectsError, projectsLoading, reloadProjects, uploadProjectMedia, user]);
+  }), [createProject, generateProjectContent, getProject, getProjectContent, loadedProjectsOwner, profile, projects, projectsError, projectsLoading, reloadProjects, uploadProjectMedia, user]);
   return <UserAreaContext.Provider value={value}>{children}</UserAreaContext.Provider>;
 }
 
