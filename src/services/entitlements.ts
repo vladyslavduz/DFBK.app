@@ -1,7 +1,7 @@
 import { apiRequest } from '../lib/api';
-import { appConfig } from '../config/app';
 
 export type PlanCode = 'trial' | 'business';
+export const TRIAL_VOICE_MAX_WORDS = 10;
 
 export type PlanEntitlements = {
   plan: PlanCode;
@@ -20,8 +20,11 @@ export const previewTrialEntitlements: PlanEntitlements = {
   displayName: 'Testzugang',
   status: 'active',
   voice: {
-    enabled: appConfig.features.voice,
-    maxWords: 15,
+    // Trial voice is intentionally enabled for the live product test. The
+    // limit is a UX guard for the browser speech flow; Business can later be
+    // supplied by the backend entitlement response.
+    enabled: true,
+    maxWords: 10,
   },
   expiresAt: null,
   source: 'preview-default',
@@ -49,7 +52,9 @@ function normalize(result: BackendEntitlementsResponse): PlanEntitlements {
     status: result.status || 'active',
     voice: {
       enabled: result.voice?.enabled === true,
-      maxWords: typeof result.voice?.maxWords === 'number' ? result.voice.maxWords : null,
+      maxWords: plan === 'trial'
+        ? TRIAL_VOICE_MAX_WORDS
+        : typeof result.voice?.maxWords === 'number' ? result.voice.maxWords : null,
     },
     expiresAt: result.expiresAt || null,
     source: 'backend',

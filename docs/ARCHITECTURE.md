@@ -13,7 +13,7 @@ Keep the first commercial version small. The first useful loop is:
 3. Review/copy/download.
 4. Store the project as a reference.
 
-Direct publishing, billing and client portal are prepared in the structure but must not block the MVP. Voice dictation is now integrated into the Beschreibung field behind `VITE_FEATURE_VOICE=1`; the default (`0`/unset) keeps it visibly locked for the free plan until plan entitlements are connected.
+Direct publishing, billing and client portal are prepared in the structure but must not block the MVP. Voice dictation is integrated into the Beschreibung field and is currently available in the Trial/Testzugang for a controlled 10-word test. Plan entitlements remain the source of truth for future Business access.
 
 ## Layers
 

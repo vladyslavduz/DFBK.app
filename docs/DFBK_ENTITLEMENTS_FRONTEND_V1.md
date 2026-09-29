@@ -21,13 +21,13 @@ Expected response:
   "status": "active",
   "voice": {
     "enabled": true,
-    "maxWords": 15
+    "maxWords": 10
   },
   "expiresAt": null
 }
 ```
 
-Until this endpoint exists, the frontend uses an honest `trial` fallback. The preview build flag `VITE_FEATURE_VOICE=1` only enables the 15-word Trial voice test; it does not grant Business access.
+Until this endpoint exists, the frontend uses an honest `trial` fallback with a 10-word voice limit. Trial voice is enabled for the current controlled product test; it does not grant Business access.
 
 ## Backend requirement
 
