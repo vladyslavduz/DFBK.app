@@ -23,8 +23,8 @@ export default function ChannelCard({ channel, value, onChange }: Props) {
   return (
     <article className="channel-card">
       <header><div><strong>{labels[channel].title}</strong><span>{labels[channel].description}</span></div><span className="channel-ready"><AppIcon name="check" />Bereit</span></header>
-      {editing ? <textarea value={value} onChange={event => onChange(event.target.value)} /> : <p>{value}</p>}
-      <div className="channel-actions"><button type="button" onClick={copy}><AppIcon name={copied ? 'check' : 'copy'} />{copied ? 'Kopiert' : 'Kopieren'}</button><button type="button" onClick={() => setEditing(current => !current)}><AppIcon name="edit" />{editing ? 'Speichern' : 'Bearbeiten'}</button></div>
+      {editing ? <><textarea value={value} onChange={event => onChange(event.target.value)} /><small className="channel-edit-note">Änderungen gelten nur lokal bis zum Neuladen der Seite.</small></> : <p>{value}</p>}
+      <div className="channel-actions"><button type="button" onClick={copy}><AppIcon name={copied ? 'check' : 'copy'} />{copied ? 'Kopiert' : 'Kopieren'}</button><button type="button" onClick={() => setEditing(current => !current)}><AppIcon name="edit" />{editing ? 'Lokal übernehmen' : 'Bearbeiten'}</button></div>
     </article>
   );
 }
