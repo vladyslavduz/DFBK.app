@@ -1,21 +1,44 @@
-import { useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import AppIcon from './AppIcon';
+import PhotoCropper from './PhotoCropper';
 
 type Props = { preview: string; onSelect: (file: File) => void; onContinue: () => void };
 
 export default function PhotoUploader({ preview, onSelect, onContinue }: Props) {
   const cameraRef = useRef<HTMLInputElement>(null);
   const uploadRef = useRef<HTMLInputElement>(null);
+  const [sourceFile, setSourceFile] = useState<File | null>(null);
+  const [sourceUrl, setSourceUrl] = useState('');
+
+  useEffect(() => () => {
+    if (sourceUrl.startsWith('blob:')) URL.revokeObjectURL(sourceUrl);
+  }, [sourceUrl]);
 
   function selectFile(files: FileList | null) {
     const file = files?.[0];
-    if (file) onSelect(file);
+    if (!file) return;
+    if (sourceUrl.startsWith('blob:')) URL.revokeObjectURL(sourceUrl);
+    setSourceFile(file);
+    setSourceUrl(URL.createObjectURL(file));
+  }
+
+  function cancelCrop() {
+    if (sourceUrl.startsWith('blob:')) URL.revokeObjectURL(sourceUrl);
+    setSourceFile(null);
+    setSourceUrl('');
+  }
+
+  function confirmCrop(file: File) {
+    onSelect(file);
+    if (sourceUrl.startsWith('blob:')) URL.revokeObjectURL(sourceUrl);
+    setSourceFile(null);
+    setSourceUrl('');
   }
 
   return (
     <section className="wizard-card photo-step">
       <div className="wizard-heading"><span className="app-kicker">Schritt 1</span><h1>Foto hinzufügen</h1><p>Zeig uns die Arbeit, die du sichtbar machen möchtest.</p></div>
-      {preview ? (
+      {sourceFile && sourceUrl ? <PhotoCropper sourceFile={sourceFile} sourceUrl={sourceUrl} onConfirm={confirmCrop} onCancel={cancelCrop} /> : preview ? (
         <div className="photo-preview"><img src={preview} alt="Vorschau der ausgewählten Arbeit" /><button className="button button-secondary" type="button" onClick={() => uploadRef.current?.click()}><AppIcon name="image" />Foto ändern</button></div>
       ) : (
         <div className="photo-actions">
@@ -25,7 +48,7 @@ export default function PhotoUploader({ preview, onSelect, onContinue }: Props) 
       )}
       <input ref={cameraRef} className="visually-hidden" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" onChange={event => { selectFile(event.target.files); event.currentTarget.value = ''; }} />
       <input ref={uploadRef} className="visually-hidden" type="file" accept="image/jpeg,image/png,image/webp" onChange={event => { selectFile(event.target.files); event.currentTarget.value = ''; }} />
-      <div className="wizard-footer"><span>{preview ? 'Foto ausgewählt' : 'Eine Hauptaufnahme reicht für den Start.'}</span><button className="button" type="button" disabled={!preview} onClick={onContinue}>Weiter<AppIcon name="arrow" /></button></div>
+      {!sourceFile && <div className="wizard-footer"><span>{preview ? 'Foto ausgewählt' : 'Eine Hauptaufnahme reicht für den Start.'}</span><button className="button" type="button" disabled={!preview} onClick={onContinue}>Weiter<AppIcon name="arrow" /></button></div>}
     </section>
   );
 }

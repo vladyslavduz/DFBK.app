@@ -31,7 +31,7 @@ Authenticated user only.
   "status": "active",
   "voice": {
     "enabled": true,
-    "maxWords": 15
+    "maxWords": 10
   },
   "expiresAt": null
 }
@@ -74,4 +74,4 @@ Default behavior when no row exists: return `trial` / `Testzugang`.
 
 ## Important limitation
 
-The current microphone uses browser speech recognition and sends ordinary project text to the existing Projects API. The 15-word Trial cap is therefore a frontend UX limit, not a security boundary. Strict server-side enforcement requires a later voice-input contract (for example an explicit `inputMode: "voice"` field or a transcription endpoint). Do not silently pretend the current browser-only cap is tamper-proof.
+The current microphone uses browser speech recognition and sends ordinary project text to the existing Projects API. The 10-word Trial cap is therefore a frontend UX limit, not a security boundary. Strict server-side enforcement requires a later voice-input contract (for example an explicit `inputMode: "voice"` field or a transcription endpoint). Do not silently pretend the current browser-only cap is tamper-proof.
