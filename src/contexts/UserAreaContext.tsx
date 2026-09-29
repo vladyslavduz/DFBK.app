@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { useAuth } from './AuthContext';
 import { ApiError } from '../lib/api';
 import { projectService } from '../services/projects';
+import { entitlementsService, previewTrialEntitlements, type PlanEntitlements } from '../services/entitlements';
 import type { MediaAsset, Project, ProjectGeneratedContent, ProjectStatus } from '../types/models';
 
 export type ContentChannel = 'google' | 'social' | 'website';
@@ -35,6 +36,10 @@ type UserAreaContextValue = {
   projectsLoading: boolean;
   projectsError: string | null;
   profile: LocalProfile;
+  plan: PlanEntitlements;
+  planLoading: boolean;
+  planError: string | null;
+  reloadPlan: () => Promise<void>;
   reloadProjects: () => Promise<void>;
   getProject: (id: string) => Promise<AppProject>;
   getProjectContent: (id: string) => Promise<ProjectContent | null>;
@@ -118,6 +123,9 @@ export function UserAreaProvider({ children }: { children: ReactNode }) {
   const [projectsError, setProjectsError] = useState<string | null>(null);
   const [loadedProjectsOwner, setLoadedProjectsOwner] = useState<string | null>(null);
   const [profile, setProfile] = useState<LocalProfile>(() => readStorage(profileKey, { name: '', company: '' }));
+  const [plan, setPlan] = useState<PlanEntitlements>(previewTrialEntitlements);
+  const [planLoading, setPlanLoading] = useState(false);
+  const [planError, setPlanError] = useState<string | null>(null);
 
   useEffect(() => {
     if (storageOwner === ownerId) return;
@@ -157,9 +165,40 @@ export function UserAreaProvider({ children }: { children: ReactNode }) {
     }
   }, [handleUnauthorized, user]);
 
+  const reloadPlan = useCallback(async () => {
+    if (!user) {
+      setPlan(previewTrialEntitlements);
+      setPlanError(null);
+      setPlanLoading(false);
+      return;
+    }
+
+    setPlanLoading(true);
+    setPlanError(null);
+    try {
+      setPlan(await entitlementsService.getCurrent());
+    } catch (error) {
+      await handleUnauthorized(error);
+      // Entitlements are not deployed in the current backend yet. Keep a
+      // truthful trial fallback and let the future API become authoritative.
+      if (!(error instanceof ApiError && error.status === 401)) {
+        setPlan(previewTrialEntitlements);
+        setPlanError(null);
+      } else {
+        setPlanError('Tarif konnte nicht geladen werden.');
+      }
+    } finally {
+      setPlanLoading(false);
+    }
+  }, [handleUnauthorized, user]);
+
   useEffect(() => {
     void reloadProjects();
   }, [reloadProjects]);
+
+  useEffect(() => {
+    void reloadPlan();
+  }, [reloadPlan]);
 
   const getProject = useCallback(async (id: string) => {
     try {
@@ -243,6 +282,10 @@ export function UserAreaProvider({ children }: { children: ReactNode }) {
     projectsLoading: projectsLoading || Boolean(user && loadedProjectsOwner !== user.id),
     projectsError,
     profile,
+    plan,
+    planLoading,
+    planError,
+    reloadPlan,
     reloadProjects,
     getProject,
     getProjectContent,
@@ -251,7 +294,7 @@ export function UserAreaProvider({ children }: { children: ReactNode }) {
     uploadProjectMedia,
     updateContent,
     updateProfile,
-  }), [createProject, generateProjectContent, getProject, getProjectContent, loadedProjectsOwner, profile, projects, projectsError, projectsLoading, reloadProjects, uploadProjectMedia, user]);
+  }), [createProject, generateProjectContent, getProject, getProjectContent, loadedProjectsOwner, plan, planError, planLoading, profile, projects, projectsError, projectsLoading, reloadPlan, reloadProjects, uploadProjectMedia, user]);
   return <UserAreaContext.Provider value={value}>{children}</UserAreaContext.Provider>;
 }
 

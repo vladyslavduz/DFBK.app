@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import AppIcon from './AppIcon';
-import { appConfig } from '../config/app';
+import { useUserArea } from '../contexts/UserAreaContext';
 
 type Props = { value: string; onChange: (value: string) => void; onBack: () => void; onContinue: () => void };
 
@@ -17,6 +17,7 @@ function speechConstructor() {
 }
 
 export default function DescriptionInput({ value, onChange, onBack, onContinue }: Props) {
+  const { plan } = useUserArea();
   const [speechState, setSpeechState] = useState<SpeechState>('idle');
   const [speechLanguage, setSpeechLanguage] = useState<(typeof SPEECH_LANGUAGES)[number]['value']>('de-DE');
   const [interimTranscript, setInterimTranscript] = useState('');
@@ -72,10 +73,15 @@ export default function DescriptionInput({ value, onChange, onBack, onContinue }
         else interim += transcript;
       }
 
-      const finalText = finalTranscriptRef.current.trim();
+      const rawFinalText = finalTranscriptRef.current.trim();
+      const finalText = plan.voice.maxWords ? rawFinalText.split(/\s+/).slice(0, plan.voice.maxWords).join(' ') : rawFinalText;
       const baseText = baseTextRef.current;
       onChange([baseText, finalText].filter(Boolean).join(`${baseText ? '\n' : ''}`));
       setInterimTranscript(interim.trim());
+      if (plan.voice.maxWords && rawFinalText.split(/\s+/).filter(Boolean).length >= plan.voice.maxWords) {
+        setSpeechMessage(`${plan.displayName}: maximal ${plan.voice.maxWords} Wörter pro Spracheingabe.`);
+        recognition.stop();
+      }
     };
     recognition.onerror = event => {
       setSpeechState('error');
@@ -104,7 +110,7 @@ export default function DescriptionInput({ value, onChange, onBack, onContinue }
     }
   }
 
-  const voiceAvailable = appConfig.features.voice;
+  const voiceAvailable = plan.voice.enabled;
   const speechLabel = speechState === 'recording' ? 'Aufnahme beenden' : 'Spracheingabe starten';
 
   return (
@@ -115,7 +121,7 @@ export default function DescriptionInput({ value, onChange, onBack, onContinue }
         <div className="description-input-shell">
           <textarea id="project-description" value={value} onChange={event => onChange(event.target.value)} placeholder="Was wurde gemacht? Was ist besonders wichtig?" autoFocus />
           <div className="description-toolbar">
-            <div className="description-voice-copy"><span>Schreiben oder sprechen</span>{voiceAvailable ? <span className="description-voice-hint">Sprache wird direkt in den Text übernommen.</span> : <span className="description-voice-hint">Spracheingabe ab einem passenden Tarif verfügbar.</span>}</div>
+            <div className="description-voice-copy"><span>Schreiben oder sprechen</span>{voiceAvailable ? <span className="description-voice-hint">{plan.voice.maxWords ? `Bis zu ${plan.voice.maxWords} Wörter im ${plan.displayName}.` : 'Sprache wird direkt in den Text übernommen.'}</span> : <span className="description-voice-hint">Spracheingabe ab einem passenden Tarif verfügbar.</span>}</div>
             <div className="description-voice-actions">
               <label className="speech-language"><span>Sprache</span><select value={speechLanguage} onChange={event => setSpeechLanguage(event.target.value as (typeof SPEECH_LANGUAGES)[number]['value'])} disabled={!voiceAvailable || speechState === 'recording'}>{SPEECH_LANGUAGES.map(language => <option value={language.value} key={language.value}>{language.label}</option>)}</select></label>
               <button className={`voice-button${speechState === 'recording' ? ' is-recording' : ''}`} type="button" onClick={speechState === 'recording' ? stopSpeech : startSpeech} disabled={!voiceAvailable} aria-pressed={speechState === 'recording'} title={voiceAvailable ? speechLabel : 'Spracheingabe ist in deinem aktuellen Tarif nicht verfügbar'}><AppIcon name="mic" /><span>{speechState === 'recording' ? 'Beenden' : 'Sprechen'}</span></button>
@@ -123,7 +129,7 @@ export default function DescriptionInput({ value, onChange, onBack, onContinue }
           </div>
         </div>
       </div>
-      {!voiceAvailable && <p className="voice-access-note" role="status">Spracheingabe ist in deinem aktuellen Tarif noch nicht freigeschaltet.</p>}
+      {!voiceAvailable && <p className="voice-access-note" role="status">Spracheingabe ist im {plan.displayName} noch nicht freigeschaltet.</p>}
       {speechState === 'unsupported' && <p className="inline-notice" role="status">{speechMessage}</p>}
       {(speechState === 'recording' || speechState === 'error') && <p className="inline-notice" role="status">{speechMessage}{interimTranscript ? ` ${interimTranscript}` : ''}</p>}
       <div className="wizard-footer"><button className="text-button" type="button" onClick={onBack}>Zurück</button><button className="button" type="button" disabled={!value.trim()} onClick={onContinue}>Content erstellen<AppIcon name="arrow" /></button></div>
