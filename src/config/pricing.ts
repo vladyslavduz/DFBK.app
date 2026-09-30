@@ -62,21 +62,23 @@ export const pricingConfig = {
       eyebrow: 'FÜR DEN ALLTAG',
       name: 'DFBK Pro',
       value: 'Für Betriebe, die ihre Arbeit regelmäßig sichtbar machen wollen.',
-      description: 'Mehr Projekte, mehr Kanäle und ein verlässlicher Ablauf für deinen Marketing-Alltag.',
+      description: 'Der Business-Zugang ist für die regelmäßige Nutzung vorbereitet. Preis und konkrete Nutzungsgrenzen werden vor dem Bezahlstart festgelegt.',
       audience: 'Für deinen laufenden Marketing-Alltag.',
       badge: 'BELIEBT',
       // BUSINESS TODO: insert the approved price here. Do not invent a public price.
       price: null,
       billingPeriod: 'Monat',
       features: [
-        { label: 'Mehr Projekte erstellen', availability: 'available' },
         { label: 'Professionelle Inhalte für deine Arbeit', availability: 'available' },
         { label: 'Texte für Google, Website und Social Media', availability: 'available' },
         { label: 'Bilder für deinen Online-Auftritt vorbereiten', availability: 'available' },
         { label: 'Projekte und Referenzen speichern', availability: 'available' },
         { label: 'Inhalte kopieren und herunterladen', availability: 'available' },
+        { label: 'Unbegrenzte Spracheingabe im Business-Zugang', availability: 'available' },
+        { label: 'Direktes Teilen und Business-Integrationen', availability: 'planned' },
       ],
-      cta: 'DFBK Pro wählen',
+      // Until billing exists, do not pretend that Pro can already be purchased.
+      cta: 'Zuerst ausprobieren',
       ctaTo: '/register',
       // BUSINESS TODO: replace with cancellation copy only after subscription terms are approved.
       note: 'Preis und Zahlungsmodell werden vor dem Start der Bezahlversion festgelegt.',
