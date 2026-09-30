@@ -5,6 +5,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import { UserAreaProvider } from './contexts/UserAreaContext';
 import './styles/global.css';
 import './styles/user-area.css';
+import './styles/pricing.css';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
