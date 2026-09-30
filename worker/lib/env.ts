@@ -22,4 +22,5 @@ export interface Env {
   STRIPE_WEBHOOK_SECRET?: string;
 
   SESSION_SECRET?: string;
+  ADMIN_API_KEY?: string;
 }
