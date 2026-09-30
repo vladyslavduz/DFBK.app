@@ -57,7 +57,7 @@ Business:
 }
 ```
 
-The existing frontend normalization may ignore `features` until the related UI uses them. The plan fields remain backward-compatible with the prepared frontend contract.
+The frontend reads and validates `features` together with the plan on each authenticated load or status refresh. Business is shown only for a complete, active Business response from this endpoint. If the request fails or the response is invalid, the frontend returns to a visible Trial fallback and shows an error; a previous Business result is never retained. No plan is stored in localStorage or selected through a build flag.
 
 ## Manual Business activation
 

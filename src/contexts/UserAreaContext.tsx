@@ -1,8 +1,8 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useAuth } from './AuthContext';
 import { ApiError } from '../lib/api';
 import { projectService } from '../services/projects';
-import { entitlementsService, previewTrialEntitlements, type PlanEntitlements } from '../services/entitlements';
+import { entitlementsService, fallbackTrialEntitlements, type PlanEntitlements } from '../services/entitlements';
 import type { MediaAsset, Project, ProjectGeneratedContent, ProjectStatus } from '../types/models';
 
 export type ContentChannel = 'google' | 'social' | 'website';
@@ -123,9 +123,11 @@ export function UserAreaProvider({ children }: { children: ReactNode }) {
   const [projectsError, setProjectsError] = useState<string | null>(null);
   const [loadedProjectsOwner, setLoadedProjectsOwner] = useState<string | null>(null);
   const [profile, setProfile] = useState<LocalProfile>(() => readStorage(profileKey, { name: '', company: '' }));
-  const [plan, setPlan] = useState<PlanEntitlements>(previewTrialEntitlements);
+  const [plan, setPlan] = useState<PlanEntitlements>(fallbackTrialEntitlements);
+  const [planOwnerId, setPlanOwnerId] = useState<string | null>(null);
   const [planLoading, setPlanLoading] = useState(false);
   const [planError, setPlanError] = useState<string | null>(null);
+  const planRequestId = useRef(0);
 
   useEffect(() => {
     if (storageOwner === ownerId) return;
@@ -166,8 +168,12 @@ export function UserAreaProvider({ children }: { children: ReactNode }) {
   }, [handleUnauthorized, user]);
 
   const reloadPlan = useCallback(async () => {
+    const requestId = ++planRequestId.current;
+    // Never retain a previous Business grant during refresh, revoke or a
+    // change of account. The endpoint is the only source of Business access.
+    setPlan(fallbackTrialEntitlements);
+    setPlanOwnerId(user?.id || null);
     if (!user) {
-      setPlan(previewTrialEntitlements);
       setPlanError(null);
       setPlanLoading(false);
       return;
@@ -176,19 +182,14 @@ export function UserAreaProvider({ children }: { children: ReactNode }) {
     setPlanLoading(true);
     setPlanError(null);
     try {
-      setPlan(await entitlementsService.getCurrent());
+      const nextPlan = await entitlementsService.getCurrent();
+      if (requestId === planRequestId.current) setPlan(nextPlan);
     } catch (error) {
+      if (requestId !== planRequestId.current) return;
+      setPlanError('Tarif konnte nicht geladen werden. Bitte aktualisiere den Status.');
       await handleUnauthorized(error);
-      // Entitlements are not deployed in the current backend yet. Keep a
-      // truthful trial fallback and let the future API become authoritative.
-      if (!(error instanceof ApiError && error.status === 401)) {
-        setPlan(previewTrialEntitlements);
-        setPlanError(null);
-      } else {
-        setPlanError('Tarif konnte nicht geladen werden.');
-      }
     } finally {
-      setPlanLoading(false);
+      if (requestId === planRequestId.current) setPlanLoading(false);
     }
   }, [handleUnauthorized, user]);
 
@@ -282,8 +283,8 @@ export function UserAreaProvider({ children }: { children: ReactNode }) {
     projectsLoading: projectsLoading || Boolean(user && loadedProjectsOwner !== user.id),
     projectsError,
     profile,
-    plan,
-    planLoading,
+    plan: planOwnerId === (user?.id || null) ? plan : fallbackTrialEntitlements,
+    planLoading: planLoading || Boolean(user && planOwnerId !== user.id),
     planError,
     reloadPlan,
     reloadProjects,
@@ -294,7 +295,7 @@ export function UserAreaProvider({ children }: { children: ReactNode }) {
     uploadProjectMedia,
     updateContent,
     updateProfile,
-  }), [createProject, generateProjectContent, getProject, getProjectContent, loadedProjectsOwner, plan, planError, planLoading, profile, projects, projectsError, projectsLoading, reloadPlan, reloadProjects, uploadProjectMedia, user]);
+  }), [createProject, generateProjectContent, getProject, getProjectContent, loadedProjectsOwner, plan, planError, planLoading, planOwnerId, profile, projects, projectsError, projectsLoading, reloadPlan, reloadProjects, uploadProjectMedia, user]);
   return <UserAreaContext.Provider value={value}>{children}</UserAreaContext.Provider>;
 }
 
