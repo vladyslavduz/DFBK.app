@@ -1,7 +1,7 @@
 import AppLink from '../AppLink';
-import type { PricingPlan } from '../../config/pricing';
+import { pricingConfig } from '../../config/pricing';
 
-type Props = { plan: PricingPlan };
+type Props = { plan: (typeof pricingConfig.plans)[number] };
 
 export default function PricingCard({ plan }: Props) {
   const isPro = plan.id === 'pro';
@@ -10,7 +10,7 @@ export default function PricingCard({ plan }: Props) {
     <article className={`pricing-v1-card${isPro ? ' is-pro' : ''}`}>
       <div className="pricing-v1-card-topline">
         <span className="pricing-v1-eyebrow">{plan.eyebrow}</span>
-        {plan.badge && <span className="pricing-v1-badge">{plan.badge}</span>}
+        {'badge' in plan && plan.badge && <span className="pricing-v1-badge">{plan.badge}</span>}
       </div>
       <h3>{plan.name}</h3>
       <p className="pricing-v1-value">{plan.value}</p>
