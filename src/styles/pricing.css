@@ -55,10 +55,17 @@
 .pricing-v1-final h3 { max-width: 680px; margin-left: auto; margin-right: auto; }
 .pricing-v1-final-actions { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; margin-top: 24px; }
 .pricing-v1-final-actions .button { min-height: 50px; }
+.upgrade-prompt { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(240px, .9fr); gap: 28px; align-items: center; padding: 30px; border: 1px solid #BCD0FF; border-radius: 24px; background: #F7FAFF; box-shadow: var(--shadow-soft); }
+.upgrade-prompt h2 { margin: 10px 0 12px; font-size: clamp(1.9rem, 4vw, 2.8rem); }
+.upgrade-prompt p { margin: 0; color: var(--muted); }
+.upgrade-prompt ul { display: grid; gap: 9px; margin: 22px 0 0; padding: 0; list-style: none; color: var(--navy); }
+.upgrade-prompt-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 24px; }
+.upgrade-prompt-result { overflow: hidden; border-radius: 18px; background: #fff; box-shadow: var(--shadow-soft); }
+.upgrade-prompt-result img { display: block; width: 100%; max-height: 360px; object-fit: cover; }
 
 @media (max-width: 820px) {
   .pricing-v1-container { gap: 42px; }
-  .pricing-v1-grid, .pricing-v1-value-block, .pricing-v1-outcome { grid-template-columns: 1fr; }
+  .pricing-v1-grid, .pricing-v1-value-block, .pricing-v1-outcome, .upgrade-prompt { grid-template-columns: 1fr; }
   .pricing-v1-value-grid { grid-template-columns: 1fr; }
   .pricing-v1-value-grid article { min-height: 0; }
   .pricing-v1-trust-strip { grid-template-columns: 1fr 1fr; }
@@ -74,11 +81,11 @@
   .pricing-v1-trust { justify-content: flex-start; gap: 7px 12px; }
   .pricing-v1-trust span + span::before { margin-right: 12px; }
   .pricing-v1-grid { gap: 18px; }
-  .pricing-v1-card, .pricing-v1-value-block, .pricing-v1-outcome, .pricing-v1-faq, .pricing-v1-final { padding: 22px; border-radius: 20px; }
+  .pricing-v1-card, .pricing-v1-value-block, .pricing-v1-outcome, .pricing-v1-faq, .pricing-v1-final, .upgrade-prompt { padding: 22px; border-radius: 20px; }
   .pricing-v1-card h3 { font-size: 2rem; }
   .pricing-v1-cta { min-height: 48px; }
   .pricing-v1-flow-channels { grid-template-columns: 1fr; width: 100%; }
   .pricing-v1-trust-strip { grid-template-columns: 1fr; }
-  .pricing-v1-final-actions { display: grid; }
-  .pricing-v1-final-actions .button { width: 100%; min-height: 48px; }
+  .pricing-v1-final-actions, .upgrade-prompt-actions { display: grid; }
+  .pricing-v1-final-actions .button, .upgrade-prompt-actions .button { width: 100%; min-height: 48px; }
 }
