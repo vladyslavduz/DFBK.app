@@ -1,0 +1,54 @@
+.integration-v1-page { display: grid; gap: 56px; margin-top: 34px; }
+.integration-v1-hero-panel, .integration-v1-automation, .integration-v1-safety {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+  align-items: center;
+  padding: 30px;
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  background: var(--card);
+  box-shadow: var(--shadow-soft);
+}
+.integration-v1-hero-panel h2, .integration-v1-section-heading h2, .integration-v1-automation h2, .integration-v1-safety h2 { margin: 10px 0 12px; }
+.integration-v1-hero-panel p, .integration-v1-section-heading p, .integration-v1-automation p { margin: 0; color: var(--muted); }
+.integration-v1-flow { display: grid; grid-template-columns: 1fr auto 1fr auto 1.3fr; gap: 10px; align-items: center; }
+.integration-v1-flow span, .integration-v1-flow strong { min-height: 62px; display: grid; place-items: center; padding: 12px; border: 1px solid var(--border); border-radius: 14px; background: #F8FAFC; color: var(--navy); text-align: center; }
+.integration-v1-flow strong { border-color: var(--blue); background: #EEF4FF; color: var(--blue); }
+.integration-v1-flow i { color: var(--blue); font-style: normal; font-weight: 900; }
+.integration-v1-section { display: grid; gap: 24px; }
+.integration-v1-section-heading { max-width: 760px; }
+.integration-v1-featured-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px; }
+.integration-v1-provider-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+.integration-v1-card { display: flex; flex-direction: column; min-height: 100%; padding: 24px; border: 1px solid var(--border); border-radius: 20px; background: #fff; box-shadow: var(--shadow-soft); }
+.integration-v1-card.is-featured { padding: 28px; border-color: #CAD8E6; }
+.integration-v1-card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 22px; }
+.integration-v1-logo { width: 46px; height: 46px; display: grid; place-items: center; border-radius: 13px; background: var(--navy); color: #fff; font-weight: 900; letter-spacing: -.03em; }
+.integration-v1-status { padding: 5px 9px; border-radius: 999px; font-size: .72rem; font-weight: 850; }
+.integration-v1-status.status-api-ready { background: #ECF8F0; color: var(--success); }
+.integration-v1-status.status-placeholder { background: #EEF4FF; color: var(--blue); }
+.integration-v1-status.status-planned { background: #F3F4F6; color: var(--muted); }
+.integration-v1-capability { display: inline-block; margin-bottom: 8px; color: var(--blue); font-size: .74rem; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
+.integration-v1-card h3 { margin: 0 0 10px; font-size: 1.3rem; }
+.integration-v1-card p { margin: 0; color: var(--muted); }
+.integration-v1-action { width: 100%; min-height: 46px; margin-top: auto; padding-top: 11px; padding-bottom: 11px; }
+.integration-v1-card > .button { margin-top: 24px; }
+.integration-v1-automation { background: linear-gradient(135deg, #F5F8FF, #FFFFFF); }
+.integration-v1-automation-steps { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.integration-v1-automation-steps span { padding: 14px; border: 1px solid var(--border); border-radius: 12px; background: #fff; color: var(--navy); font-weight: 800; }
+.integration-v1-safety ul { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.integration-v1-safety li { color: var(--text); }
+
+@media (max-width: 900px) {
+  .integration-v1-provider-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .integration-v1-hero-panel, .integration-v1-automation, .integration-v1-safety { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 640px) {
+  .integration-v1-page { gap: 40px; }
+  .integration-v1-featured-grid, .integration-v1-provider-grid { grid-template-columns: 1fr; }
+  .integration-v1-flow { grid-template-columns: 1fr; }
+  .integration-v1-flow i { transform: rotate(90deg); text-align: center; }
+  .integration-v1-automation-steps { grid-template-columns: 1fr; }
+  .integration-v1-hero-panel, .integration-v1-automation, .integration-v1-safety, .integration-v1-card { padding: 22px; border-radius: 20px; }
+}
