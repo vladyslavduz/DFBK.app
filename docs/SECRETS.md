@@ -18,6 +18,14 @@ npx wrangler secret put OPENAI_API_KEY
 
 Repeat for the required secret name. The value is entered interactively and must never be pasted into source code.
 
+For Tariff & Entitlements v1 the manual plan-management endpoint requires:
+
+```text
+ADMIN_API_KEY
+```
+
+`ADMIN_API_KEY` must exist only as a Cloudflare Secret (and optionally in local `.dev.vars` for development). Never place its value in `wrangler.jsonc`, GitHub, frontend code, or a `VITE_*` variable.
+
 ## Browser rule
 
 Anything named `VITE_*` becomes readable by website visitors. Therefore only public configuration may use `VITE_*`. API keys must never use that prefix.
