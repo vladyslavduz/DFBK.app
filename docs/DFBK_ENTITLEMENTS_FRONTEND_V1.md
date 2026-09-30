@@ -5,13 +5,17 @@
 - `trial` — display name `Testzugang`
 - `business` — display name `Business`
 
-The frontend is prepared for:
+The frontend reads the authenticated user's plan from:
 
 ```text
 GET /api/account/entitlements
 ```
 
-Expected response:
+The endpoint reuses the existing `dfbk_session`. If no `user_entitlements` row exists for the current user, the backend returns Trial.
+
+## Response contract
+
+Trial:
 
 ```json
 {
@@ -23,19 +27,62 @@ Expected response:
     "enabled": true,
     "maxWords": 10
   },
+  "features": {
+    "contentGeneration": true,
+    "share": false,
+    "businessIntegrations": false
+  },
   "expiresAt": null
 }
 ```
 
-Until this endpoint exists, the frontend uses an honest `trial` fallback with a 10-word voice limit. Trial voice is enabled for the current controlled product test; it does not grant Business access.
+Business:
 
-## Backend requirement
+```json
+{
+  "ok": true,
+  "plan": "business",
+  "displayName": "Business",
+  "status": "active",
+  "voice": {
+    "enabled": true,
+    "maxWords": null
+  },
+  "features": {
+    "contentGeneration": true,
+    "share": true,
+    "businessIntegrations": true
+  },
+  "expiresAt": null
+}
+```
 
-Real per-user Business activation requires a Worker/D1 entitlement implementation. It must reuse the existing `dfbk_session` auth and should not modify `users`, `sessions`, or auth token handling. A separate entitlement table is preferable to a second auth system.
+The existing frontend normalization may ignore `features` until the related UI uses them. The plan fields remain backward-compatible with the prepared frontend contract.
 
-Minimum backend contract:
+## Manual Business activation
 
-- `GET /api/account/entitlements` — authenticated user's current plan and feature limits;
-- admin-only grant/revoke operation for `trial` and `business`;
-- server-side validation of plan status and optional expiry;
-- no Stripe or automatic checkout in this MVP stage.
+There is no Stripe or admin UI in v1. The server-only admin route is:
+
+```text
+POST /api/admin/users/:userId/plan
+Authorization: Bearer <ADMIN_API_KEY>
+Content-Type: application/json
+```
+
+Business grant body:
+
+```json
+{ "plan": "business" }
+```
+
+Trial/revoke body:
+
+```json
+{ "plan": "trial" }
+```
+
+`trial` deletes the entitlement row so the normal default-Trial behavior applies again. `ADMIN_API_KEY` is a Cloudflare Secret and must never be exposed to frontend code.
+
+## Important limitation
+
+The current microphone uses browser speech recognition and sends ordinary project text to the existing Projects API. The 10-word Trial cap is therefore still a frontend UX rule, not a tamper-proof server-side voice limit. Strict enforcement would require a later explicit voice-input backend contract.
