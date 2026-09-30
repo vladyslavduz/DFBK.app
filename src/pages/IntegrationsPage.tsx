@@ -1,5 +1,6 @@
 import PageShell from '../components/PageShell';
 import StatusBadge from '../components/StatusBadge';
+import IntegrationDemo from '../components/IntegrationDemo';
 
 const integrations = [
   ['Google Business Profile', 'Lokale Posts und Projekt-Updates', 'GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET'],
@@ -11,5 +12,25 @@ const integrations = [
 ];
 
 export default function IntegrationsPage() {
-  return <PageShell eyebrow="Integrationen" title="Kanäle verbinden" intro="Alle Schnittstellen sind bewusst deaktiviert. Schlüssel gehören ausschließlich in Cloudflare Secrets."><div className="integration-list">{integrations.map(([name,desc,key]) => <article className="card integration-card" key={name}><div><h3>{name}</h3><p>{desc}</p><code>{key}</code></div><StatusBadge enabled={false} /></article>)}</div></PageShell>;
+  return (
+    <PageShell
+      eyebrow="Integrationen"
+      title="Kanäle verbinden"
+      intro="Aus einem Foto wird professioneller Content für Website, Google Business und Social Media."
+    >
+      <IntegrationDemo />
+      <div className="integration-list">
+        {integrations.map(([name, desc, key]) => (
+          <article className="card integration-card" key={name}>
+            <div>
+              <h3>{name}</h3>
+              <p>{desc}</p>
+              <code>{key}</code>
+            </div>
+            <StatusBadge enabled={false} />
+          </article>
+        ))}
+      </div>
+    </PageShell>
+  );
 }
