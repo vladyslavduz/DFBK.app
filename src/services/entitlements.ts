@@ -11,56 +11,83 @@ export type PlanEntitlements = {
     enabled: boolean;
     maxWords: number | null;
   };
+  features: {
+    contentGeneration: boolean;
+    share: boolean;
+    businessIntegrations: boolean;
+  };
   expiresAt: string | null;
-  source: 'backend' | 'preview-default';
+  source: 'backend' | 'fallback';
 };
 
-export const previewTrialEntitlements: PlanEntitlements = {
+export const fallbackTrialEntitlements: PlanEntitlements = {
   plan: 'trial',
   displayName: 'Testzugang',
   status: 'active',
   voice: {
-    // Trial voice is intentionally enabled for the live product test. The
-    // limit is a UX guard for the browser speech flow; Business can later be
-    // supplied by the backend entitlement response.
     enabled: true,
-    maxWords: 10,
+    maxWords: TRIAL_VOICE_MAX_WORDS,
+  },
+  features: {
+    contentGeneration: true,
+    share: false,
+    businessIntegrations: false,
   },
   expiresAt: null,
-  source: 'preview-default',
+  source: 'fallback',
 };
 
 type BackendEntitlementsResponse = {
   ok: true;
-  plan: PlanCode;
-  displayName?: 'Testzugang' | 'Business';
-  status?: 'active' | 'pending' | 'expired';
+  plan: unknown;
+  displayName?: unknown;
+  status?: unknown;
   voice?: {
-    enabled?: boolean;
-    maxWords?: number | null;
+    enabled?: unknown;
+    maxWords?: unknown;
   };
-  expiresAt?: string | null;
+  features?: {
+    contentGeneration?: unknown;
+    share?: unknown;
+    businessIntegrations?: unknown;
+  };
+  expiresAt?: unknown;
 };
 
-function normalize(result: BackendEntitlementsResponse): PlanEntitlements {
-  const plan = result.plan === 'business' ? 'business' : 'trial';
-  const displayName = plan === 'business' ? 'Business' : 'Testzugang';
+export function normalizeEntitlements(result: BackendEntitlementsResponse): PlanEntitlements {
+  const business = result?.ok === true && result.plan === 'business';
+  const trial = result?.ok === true && result.plan === 'trial';
+  const expectedName = business ? 'Business' : 'Testzugang';
+  const voice = result?.voice;
+  const features = result?.features;
+
+  // Only a complete, active backend Business response can grant Business UI.
+  if (
+    (!trial && !business) || result.status !== 'active' ||
+    result.displayName !== expectedName || voice?.enabled !== true ||
+    voice.maxWords !== (business ? null : TRIAL_VOICE_MAX_WORDS) ||
+    features?.contentGeneration !== true || features.share !== business ||
+    features.businessIntegrations !== business || result.expiresAt !== null
+  ) throw new Error('INVALID_ENTITLEMENTS_RESPONSE');
 
   return {
-    plan,
-    displayName: result.displayName === displayName ? result.displayName : displayName,
-    status: result.status || 'active',
+    plan: business ? 'business' : 'trial',
+    displayName: expectedName,
+    status: 'active',
     voice: {
-      enabled: result.voice?.enabled === true,
-      maxWords: plan === 'trial'
-        ? TRIAL_VOICE_MAX_WORDS
-        : typeof result.voice?.maxWords === 'number' ? result.voice.maxWords : null,
+      enabled: true,
+      maxWords: business ? null : TRIAL_VOICE_MAX_WORDS,
     },
-    expiresAt: result.expiresAt || null,
+    features: {
+      contentGeneration: true,
+      share: business,
+      businessIntegrations: business,
+    },
+    expiresAt: null,
     source: 'backend',
   };
 }
 
 export const entitlementsService = {
-  getCurrent: async () => normalize(await apiRequest<BackendEntitlementsResponse>('/account/entitlements')),
+  getCurrent: async () => normalizeEntitlements(await apiRequest<BackendEntitlementsResponse>('/account/entitlements')),
 };
