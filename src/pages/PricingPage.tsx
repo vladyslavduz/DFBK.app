@@ -1,6 +1,7 @@
-import PageShell from '../components/PageShell';
+import Header from '../components/Header';
+import Footer from '../components/Footer';
 import Pricing from '../sections/Pricing';
 
 export default function PricingPage() {
-  return <PageShell eyebrow="Preise" title="Einfaches Modell für den MVP" intro="Der endgültige Preis wird erst nach Tests mit echten Nutzern festgelegt."><Pricing /></PageShell>;
+  return <><Header /><main><Pricing standalone /></main><Footer /></>;
 }
