@@ -3,6 +3,7 @@ import AppIcon from '../components/AppIcon';
 import AppLink from '../components/AppLink';
 import ChannelCard from '../components/ChannelCard';
 import ProcessingState from '../components/ProcessingState';
+import ProjectImageViewer from '../components/ProjectImageViewer';
 import {
   projectStatusLabel,
   useUserArea,
@@ -11,36 +12,53 @@ import {
 } from '../contexts/UserAreaContext';
 import { ApiError } from '../lib/api';
 import { projectGenerationErrorMessage } from '../lib/project-generation';
+import { getProjectMediaUrl } from '../services/projects';
+import type { ProjectMedia } from '../types/models';
+
+function withMedia(project: AppProject, media: ProjectMedia): AppProject {
+  return {
+    ...project,
+    media,
+    originalImage: media.original ? getProjectMediaUrl(project.id, media.original.id) : null,
+    optimizedImage: media.optimized ? getProjectMediaUrl(project.id, media.optimized.id) : null,
+  };
+}
 
 export default function ProjectDetailPage({ id }: { id: string }) {
-  const { generateProjectContent, getProject, getProjectContent, updateContent } = useUserArea();
-  const [imageMode, setImageMode] = useState<'optimized' | 'original'>('optimized');
+  const { generateProjectContent, getProject, getProjectContent, getProjectMedia, updateContent } = useUserArea();
   const [project, setProject] = useState<AppProject | null>(null);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<'not-found' | 'generic' | null>(null);
   const [generationError, setGenerationError] = useState('');
+  const [mediaLoadError, setMediaLoadError] = useState('');
   const generatingRef = useRef(false);
 
   const loadProject = useCallback(async () => {
     setLoading(true);
     setError(null);
     setGenerationError('');
+    setMediaLoadError('');
     try {
       const loadedProject = await getProject(id);
       const content = await getProjectContent(id);
-      setProject({ ...loadedProject, content });
+      let hydratedProject = { ...loadedProject, content };
+      try {
+        const media = await getProjectMedia(id);
+        hydratedProject = withMedia(hydratedProject, media);
+      } catch {
+        setMediaLoadError('Die Bildversionen konnten nicht vollständig geladen werden. Das verfügbare Original bleibt nutzbar.');
+      }
+      setProject(hydratedProject);
     } catch (requestError) {
       setProject(null);
       setError(requestError instanceof ApiError && requestError.code === 'PROJECT_NOT_FOUND' ? 'not-found' : 'generic');
     } finally {
       setLoading(false);
     }
-  }, [getProject, getProjectContent, id]);
+  }, [getProject, getProjectContent, getProjectMedia, id]);
 
-  useEffect(() => {
-    void loadProject();
-  }, [loadProject]);
+  useEffect(() => { void loadProject(); }, [loadProject]);
 
   const generate = useCallback(async () => {
     if (generatingRef.current || !project) return;
@@ -58,7 +76,7 @@ export default function ProjectDetailPage({ id }: { id: string }) {
       setGenerationError(projectGenerationErrorMessage(requestError));
       try {
         const savedProject = await getProject(project.id);
-        setProject({ ...savedProject, content: project.content });
+        setProject({ ...savedProject, media: project.media, originalImage: project.originalImage, optimizedImage: project.optimizedImage, content: project.content });
       } catch {
         setProject(current => current ? { ...current, status: 'processing' } : current);
       }
@@ -71,18 +89,13 @@ export default function ProjectDetailPage({ id }: { id: string }) {
   function changeContent(channel: ContentChannel, value: string) {
     if (!project?.content) return;
     updateContent(project.id, channel, value);
-    setProject(current => current?.content
-      ? { ...current, content: { ...current.content, [channel]: value } }
-      : current);
+    setProject(current => current?.content ? { ...current, content: { ...current.content, [channel]: value } } : current);
   }
 
   if (loading) return <div className="app-page"><div className="app-empty-card" aria-live="polite"><span className="processing-orb"><AppIcon name="spark" /></span><h1>Projekt wird geladen</h1></div></div>;
-
   if (error === 'generic') return <div className="app-page"><div className="app-empty-card"><AppIcon name="folder" /><h1>Projekt konnte nicht geladen werden</h1><p>Etwas ist schiefgelaufen. Bitte versuche es erneut.</p><button className="button" type="button" onClick={() => void loadProject()}>Erneut versuchen</button></div></div>;
-
   if (error === 'not-found' || !project) return <div className="app-page"><div className="app-empty-card"><AppIcon name="folder" /><h1>Projekt nicht gefunden</h1><p>Dieses Projekt ist nicht verfügbar oder wurde bereits entfernt.</p><AppLink className="button" to="/app/projects">Zu meinen Projekten</AppLink></div></div>;
 
-  const image = imageMode === 'optimized' ? project.optimizedImage : project.originalImage;
   const hasContent = Boolean(project.content);
   const showContent = hasContent && ['ready', 'approved', 'published'].includes(project.status);
 
@@ -90,8 +103,16 @@ export default function ProjectDetailPage({ id }: { id: string }) {
     <div className="app-page">
       <AppLink className="back-link" to="/app/projects">← Meine Projekte</AppLink>
       <header className="app-page-heading project-detail-heading"><div><span className={`project-status status-${project.status}`}><AppIcon name="check" />{projectStatusLabel(project.status)}</span><h1>{project.title}</h1><p>{new Intl.DateTimeFormat('de-DE', { dateStyle: 'long' }).format(new Date(project.createdAt))}</p></div></header>
-      <section className="project-image-card"><div className="image-toggle"><button className={imageMode === 'original' ? 'is-active' : ''} onClick={() => setImageMode('original')} type="button">Original</button><button className={imageMode === 'optimized' ? 'is-active' : ''} onClick={() => setImageMode('optimized')} type="button">Optimiert</button></div><img className={imageMode === 'optimized' ? 'is-optimized' : ''} src={image} alt="Projektaufnahme" /><div className="project-image-actions"><a className="button button-secondary" href={image} download="dfbk-projektbild"><AppIcon name="download" />Herunterladen</a></div></section>
-      <section className="project-description"><span className="app-kicker">Beschreibung</span><h2>Über diese Arbeit</h2><p>{project.description}</p></section>
+
+      <ProjectImageViewer
+        projectId={project.id}
+        originalImage={project.originalImage}
+        optimizedImage={project.optimizedImage}
+        mediaLoadError={mediaLoadError}
+        onImagesChange={(originalImage, optimizedImage) => setProject(current => current ? { ...current, originalImage, optimizedImage } : current)}
+      />
+
+      {project.description && <section className="project-description"><span className="app-kicker">Zusatzinfo</span><h2>Zu dieser Arbeit</h2><p>{project.description}</p></section>}
 
       {project.status === 'processing' && <ProcessingState error={generationError} retrying={generating} onReload={() => void loadProject()} />}
 
@@ -108,7 +129,7 @@ export default function ProjectDetailPage({ id }: { id: string }) {
         <section className="generation-action-card">
           <span className="processing-orb"><AppIcon name="spark" /></span>
           <h2>Content für dieses Projekt erstellen</h2>
-          <p>DFBK.app erstellt drei passende Texte aus deinem Foto und deiner Beschreibung.</p>
+          <p>DFBK.app erstellt passende Texte aus deinem Foto und berücksichtigt deine Zusatzinfo, falls vorhanden.</p>
           {generationError && <p className="generation-error" role="alert">{generationError}</p>}
           <button className="button" type="button" disabled={generating} onClick={() => void generate()}>{generating ? 'DFBK.app erstellt deine Inhalte …' : 'Content erstellen'}</button>
         </section>
@@ -125,7 +146,7 @@ export default function ProjectDetailPage({ id }: { id: string }) {
       {showContent && project.content && (
         <>
           <section><div className="section-title-row"><div><span className="app-kicker">Erstellte Inhalte</span><h2>Fertig für deine Kunden</h2></div></div><div className="channel-list">{(['google', 'social', 'website'] as const).map(channel => <ChannelCard channel={channel} value={project.content?.[channel] || ''} onChange={value => changeContent(channel, value)} key={channel} />)}</div></section>
-          <section className="visibility-panel"><div><span className="app-kicker">Sichtbar werden</span><h2>Content verwenden</h2><p>Kopiere deine Texte und lade das Bild für Website, Google oder Social Media herunter.</p></div><div className="channel-pills"><span>Google</span><span>Website</span><span>Instagram</span><span>Facebook</span></div></section>
+          <section className="visibility-panel"><div><span className="app-kicker">Sichtbar werden</span><h2>Content verwenden</h2><p>Kopiere deine Texte und lade die gewünschte Bildversion für Website, Google oder Social Media herunter.</p></div><div className="channel-pills"><span>Google</span><span>Website</span><span>Instagram</span><span>Facebook</span></div></section>
         </>
       )}
     </div>

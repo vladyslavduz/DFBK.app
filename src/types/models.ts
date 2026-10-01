@@ -24,12 +24,32 @@ export interface MediaAsset {
   id: string;
   projectId: string;
   mediaType: 'image';
-  role: 'original';
+  role: 'original' | 'optimized';
   mimeType: string;
   sizeBytes: number;
   createdAt: string;
   updatedAt: string;
 }
+
+export type ProjectMediaRef = {
+  id: string;
+  mimeType: string;
+};
+
+export type ProjectMedia = {
+  original: ProjectMediaRef | null;
+  optimized: ProjectMediaRef | null;
+};
+
+export type ProjectMediaResponse = {
+  ok: true;
+  media: ProjectMedia;
+};
+
+export type ProjectOptimizeResponse = {
+  ok: true;
+  optimized: ProjectMediaRef;
+};
 
 export interface Project {
   id: string;
@@ -38,10 +58,7 @@ export interface Project {
   status: ProjectStatus;
   createdAt: string;
   updatedAt: string;
-  media: {
-    id: string;
-    mimeType: string;
-  } | null;
+  media: ProjectMediaRef | null;
 }
 
 export interface ProjectGeneratedContent {
