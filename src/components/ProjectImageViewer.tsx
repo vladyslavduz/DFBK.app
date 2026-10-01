@@ -60,22 +60,24 @@ export default function ProjectImageViewer({ projectId, originalImage, optimized
     <section className="project-image-card ki-image-viewer">
       <div className="image-toggle" role="group" aria-label="Bildversion wählen">
         <button type="button" aria-pressed={!showingOptimized} className={!showingOptimized ? 'is-active' : ''} onClick={() => setImageMode('original')}>Original</button>
-        <button type="button" aria-pressed={showingOptimized} className={showingOptimized ? 'is-active' : ''} disabled={!optimizedImage} onClick={() => optimizedImage && setImageMode('optimized')}>KI-optimiert</button>
+        <button type="button" aria-pressed={showingOptimized} className={showingOptimized ? 'is-active' : ''} disabled={!optimizedImage} onClick={() => optimizedImage && setImageMode('optimized')} aria-label="DFBK.app optimiert">
+          <span className="dfbk-optimized-label"><span className="dfbk-mini-brand"><b>DFBK</b><span className="dfbk-mini-dot">.</span><span className="dfbk-mini-app">app</span></span><span>optimiert</span></span>
+        </button>
       </div>
 
       <div className="ki-image-stage">
-        <img className={showingOptimized ? 'is-optimized' : ''} src={displayedImage} alt={showingOptimized ? 'KI-optimierte Projektaufnahme' : 'Originale Projektaufnahme'} />
+        <img className={showingOptimized ? 'is-optimized' : ''} src={displayedImage} alt={showingOptimized ? 'Von DFBK.app optimierte Projektaufnahme' : 'Originale Projektaufnahme'} />
         {retrying && <div className="ki-image-processing" aria-live="polite"><span className="processing-orb"><AppIcon name="spark" /></span><strong>DFBK.app optimiert dein Foto …</strong></div>}
       </div>
 
       {(mediaLoadError || optimizationError || !optimizedImage) && !retrying && (
         <div className="ki-image-notice" role="status">
-          <p>{optimizationError || mediaLoadError || 'Eine KI-optimierte Version ist aktuell noch nicht verfügbar. Das Original bleibt vollständig nutzbar.'}</p>
+          <p>{optimizationError || mediaLoadError || 'Eine von DFBK.app optimierte Version ist aktuell noch nicht verfügbar. Das Original bleibt vollständig nutzbar.'}</p>
         </div>
       )}
 
       <div className="project-image-actions ki-image-actions">
-        <a className="button button-secondary" href={displayedImage} download={showingOptimized ? 'dfbk-projektbild-ki-optimiert' : 'dfbk-projektbild-original'}><AppIcon name="download" />{showingOptimized ? 'KI-optimiert herunterladen' : 'Original herunterladen'}</a>
+        <a className="button button-secondary" href={displayedImage} download={showingOptimized ? 'dfbk-projektbild-optimiert' : 'dfbk-projektbild-original'}><AppIcon name="download" />{showingOptimized ? 'Optimiertes Bild herunterladen' : 'Original herunterladen'}</a>
         <button className="button button-secondary" type="button" disabled={retrying} onClick={() => void retryOptimization()}>{retrying ? 'Wird optimiert …' : 'Erneut optimieren'}</button>
       </div>
     </section>
