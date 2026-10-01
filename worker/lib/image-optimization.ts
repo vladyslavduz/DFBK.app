@@ -32,17 +32,18 @@ const IMAGE_OUTPUT_FORMAT = 'jpeg';
 const IMAGE_OUTPUT_COMPRESSION = '95';
 
 const OPTIMIZATION_PROMPT = [
-  'Professionally optimize this photo of completed work for high-quality business marketing.',
-  'Preserve the actual completed work, its real materials, geometry, construction details, surface colors and realistic appearance.',
-  'Improve lighting, exposure, white balance, natural color reproduction, contrast, clarity, perspective and overall photographic presentation where appropriate.',
-  'Carefully improve framing or crop only when it clearly improves presentation without hiding or changing relevant completed work.',
-  'Detect and carefully remove only obvious temporary visual clutter that is clearly not part of the completed work, such as tools, cables, extension cords, buckets, bottles, cans, packaging, cloths, temporary work accessories and small construction debris.',
+  'Professionally optimize this real business photo for high-quality marketing while preserving the truth of what the business actually produced, performed, presented or photographed.',
+  'The photo may come from any small-business category, including trades and repair work, hair and beauty services, food and bakery products, tailoring and handmade goods, automotive services, photography, hospitality, retail, wellness, crafts or other professional services.',
+  'First identify the main subject and the actual result that should be presented to customers. Preserve that real subject, result, product, service outcome, materials, colors, geometry, proportions, branding and realistic appearance.',
+  'Improve only the photographic presentation where appropriate: lighting, exposure, white balance, natural color reproduction, contrast, clarity, sharpness, perspective, framing and crop.',
+  'Detect and carefully remove only obvious temporary visual clutter that is clearly unrelated to the intended subject or final presentation. Depending on the scene, this can include tools, cables, buckets, bottles, packaging, cloths, scraps, disposable containers, temporary work accessories, accidental background objects or other small distractions.',
+  'Do not remove legitimate products, ingredients, tools intentionally shown as part of the service, decorative elements, equipment, people, branding or contextual objects when they are relevant to the business result or presentation.',
   'When temporary clutter is removed, reconstruct the revealed background naturally and consistently with the surrounding real scene.',
-  'Do not redesign, repair, beautify or materially alter the actual completed work.',
-  'Do not change real construction elements, installed components, material type, geometry, dimensions, surface color or meaningful defects of the completed work unless a change is strictly photographic correction rather than alteration of the work itself.',
-  'Do not invent new construction elements, materials, decorations, fixtures, furniture, branding or details.',
+  'Do not redesign, repair, beautify or materially alter the actual business result, person, product, food item, garment, vehicle, room, object or service outcome.',
+  'Do not change real colors, materials, construction details, product shape, hairstyle, skin features, food structure, garment cut, vehicle parts, photographed subject identity, proportions or meaningful defects unless the change is strictly a photographic correction rather than an alteration of reality.',
+  'Do not invent new products, decorations, fixtures, ingredients, features, branding, construction elements, materials or details.',
   'Do not make the result look staged, synthetic or AI-generated.',
-  'The result must remain photorealistic and look like a professionally taken photograph of the same real completed work.',
+  'The result must remain photorealistic and look like a professionally prepared photograph of the same real subject and the same real business result.',
 ].join('\n');
 
 function inputExtension(mimeType: string): string {
