@@ -8,6 +8,13 @@
 .ki-image-actions { display: flex; flex-wrap: wrap; gap: 10px; }
 .ki-image-actions .button { min-height: 48px; }
 .image-toggle button:disabled { cursor: not-allowed; opacity: .45; }
+.dfbk-optimized-label { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.dfbk-mini-brand { display: inline-flex; align-items: baseline; gap: 1px; font-weight: 900; letter-spacing: -.02em; }
+.dfbk-mini-brand b { color: currentColor; }
+.dfbk-mini-dot { color: var(--amber); font-weight: 900; }
+.dfbk-mini-app { color: var(--blue); font-weight: 900; }
+.image-toggle button.is-active .dfbk-mini-app,
+.image-toggle button.is-active .dfbk-mini-dot { color: #fff; }
 .image-state-card { justify-items: start; }
 .image-state-card p { margin: 0; color: var(--muted); }
 .project-card-image-missing { width: 100%; height: 100%; display: grid; place-items: center; background: #EDF2F7; color: var(--muted); font-size: .82rem; font-weight: 800; text-align: center; }
@@ -24,4 +31,5 @@
   .ki-image-stage img { max-height: 70dvh; }
   .image-toggle { width: auto; max-width: calc(100% - 56px); }
   .image-toggle button { min-height: 48px; }
+  .dfbk-optimized-label { gap: 4px; }
 }
