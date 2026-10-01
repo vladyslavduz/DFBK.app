@@ -112,16 +112,24 @@ export default function DescriptionInput({ value, onChange, onBack, onContinue }
 
   const voiceAvailable = plan.voice.enabled;
   const speechLabel = speechState === 'recording' ? 'Aufnahme beenden' : 'Spracheingabe starten';
+  const hasAdditionalInfo = Boolean(value.trim());
 
   return (
     <section className="wizard-card description-step">
-      <div className="wizard-heading"><span className="app-kicker">Schritt 2</span><h1>Erzähl uns kurz von deiner Arbeit</h1><p>Ein paar einfache Informationen reichen aus.</p></div>
+      <div className="wizard-heading">
+        <span className="app-kicker">Schritt 2 · Optional</span>
+        <h1>Möchtest du etwas ergänzen?</h1>
+        <p>Optional – füge nur Informationen hinzu, die auf dem Foto nicht erkennbar sind.</p>
+      </div>
       <div className="description-field">
-        <label htmlFor="project-description">Beschreibung</label>
+        <label htmlFor="project-description">Zusatzinfo <small>(optional)</small></label>
         <div className="description-input-shell">
-          <textarea id="project-description" value={value} onChange={event => onChange(event.target.value)} placeholder="Was wurde gemacht? Was ist besonders wichtig?" autoFocus />
+          <textarea id="project-description" value={value} onChange={event => onChange(event.target.value)} placeholder="z. B. Material, Marke, Ort oder Besonderheit" autoFocus />
           <div className="description-toolbar">
-            <div className="description-voice-copy" title={voiceAvailable && plan.voice.maxWords ? `Im ${plan.displayName} sind bis zu ${plan.voice.maxWords} Wörter pro Spracheingabe möglich.` : undefined}><span>Schreiben oder sprechen</span>{voiceAvailable ? <span className="description-voice-hint">{plan.voice.maxWords ? `Testzugang: maximal ${plan.voice.maxWords} Wörter pro Spracheingabe.` : 'Sprache wird direkt in den Text übernommen.'}</span> : <span className="description-voice-hint">Spracheingabe ab einem passenden Tarif verfügbar.</span>}</div>
+            <div className="description-voice-copy" title={voiceAvailable && plan.voice.maxWords ? `Im ${plan.displayName} sind bis zu ${plan.voice.maxWords} Wörter pro Spracheingabe möglich.` : undefined}>
+              <span>Material · Marke · Ort · Besonderheit</span>
+              {voiceAvailable ? <span className="description-voice-hint">{plan.voice.maxWords ? `Testzugang: maximal ${plan.voice.maxWords} Wörter pro Spracheingabe.` : 'Schreiben oder sprechen – nur wenn du etwas ergänzen möchtest.'}</span> : <span className="description-voice-hint">Spracheingabe ab einem passenden Tarif verfügbar.</span>}
+            </div>
             <div className="description-voice-actions">
               <label className="speech-language"><span>Sprache</span><select value={speechLanguage} onChange={event => setSpeechLanguage(event.target.value as (typeof SPEECH_LANGUAGES)[number]['value'])} disabled={!voiceAvailable || speechState === 'recording'}>{SPEECH_LANGUAGES.map(language => <option value={language.value} key={language.value}>{language.label}</option>)}</select></label>
               <button className={`voice-button${speechState === 'recording' ? ' is-recording' : ''}`} type="button" onClick={speechState === 'recording' ? stopSpeech : startSpeech} disabled={!voiceAvailable} aria-pressed={speechState === 'recording'} title={voiceAvailable ? speechLabel : 'Spracheingabe ist in deinem aktuellen Tarif nicht verfügbar'}><AppIcon name="mic" /><span>{speechState === 'recording' ? 'Beenden' : 'Sprechen'}</span></button>
@@ -132,7 +140,7 @@ export default function DescriptionInput({ value, onChange, onBack, onContinue }
       {!voiceAvailable && <p className="voice-access-note" role="status">Spracheingabe ist im {plan.displayName} noch nicht freigeschaltet.</p>}
       {speechState === 'unsupported' && <p className="inline-notice" role="status">{speechMessage}</p>}
       {(speechState === 'recording' || speechState === 'error') && <p className="inline-notice" role="status">{speechMessage}{interimTranscript ? ` ${interimTranscript}` : ''}</p>}
-      <div className="wizard-footer"><button className="text-button" type="button" onClick={onBack}>Zurück</button><button className="button" type="button" disabled={!value.trim()} onClick={onContinue}>Content erstellen<AppIcon name="arrow" /></button></div>
+      <div className="wizard-footer"><button className="text-button" type="button" onClick={onBack}>Zurück</button><button className="button" type="button" onClick={onContinue}>{hasAdditionalInfo ? 'Weiter' : 'Ohne Zusatzinfo weiter'}<AppIcon name="arrow" /></button></div>
     </section>
   );
 }
