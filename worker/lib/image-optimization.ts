@@ -27,7 +27,7 @@ export class ImageOptimizationError extends Error {
 }
 
 const IMAGE_OPTIMIZATION_MODEL = 'gpt-image-2.5-sunburst';
-const IMAGE_OPTIMIZATION_QUALITY = 'max';
+const IMAGE_OPTIMIZATION_QUALITY = 'high';
 const IMAGE_OUTPUT_FORMAT = 'jpeg';
 const IMAGE_OUTPUT_COMPRESSION = '95';
 
