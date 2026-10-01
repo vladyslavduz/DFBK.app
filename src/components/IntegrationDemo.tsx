@@ -14,6 +14,15 @@ const base = '/visual/integrations';
 const icons = `${base}/icons`;
 const squareBrand = '/brand/favicon/android-chrome-512x512.png';
 
+function FilledImage({ src, alt = '', className = '' }: { src: string; alt?: string; className?: string }) {
+  return (
+    <div className={`integration-demo__image-frame ${className}`.trim()}>
+      <img className="integration-demo__image-fill" src={src} alt="" aria-hidden="true" />
+      <img className="integration-demo__image-main" src={src} alt={alt} />
+    </div>
+  );
+}
+
 export default function IntegrationDemo() {
   return (
     <section className="integration-demo" aria-label="DFBK Content-Demo">
@@ -25,7 +34,7 @@ export default function IntegrationDemo() {
 
       <div className="integration-demo__stage">
         <div className="integration-demo__scene integration-demo__scene--before" aria-hidden="true">
-          <img src={`${base}/friseur-before.webp`} alt="" />
+          <FilledImage src={`${base}/friseur-before.webp`} className="integration-demo__scene-frame" />
           <div className="integration-demo__scene-label">Original</div>
         </div>
 
@@ -55,8 +64,20 @@ export default function IntegrationDemo() {
 
         <div className="integration-demo__processor" aria-hidden="true">
           <div className="integration-demo__processor-aura" />
-          <img className="integration-demo__neon-logo" src={squareBrand} alt="" />
-          <div className="integration-demo__processing-line" />
+          <div className="integration-demo__processor-core">
+            <div className="integration-demo__processor-photo integration-demo__processor-photo--source">
+              <FilledImage src={`${base}/friseur-after.webp`} className="integration-demo__processor-frame" />
+            </div>
+            <div className="integration-demo__processor-photo integration-demo__processor-photo--optimized">
+              <FilledImage src={`${base}/friseur-optimized.webp`} className="integration-demo__processor-frame" />
+            </div>
+            <div className="integration-demo__processor-spark integration-demo__processor-spark--1" />
+            <div className="integration-demo__processor-spark integration-demo__processor-spark--2" />
+            <div className="integration-demo__processor-spark integration-demo__processor-spark--3" />
+            <img className="integration-demo__neon-logo" src={squareBrand} alt="" />
+            <div className="integration-demo__processing-line" />
+            <div className="integration-demo__processing-outline" />
+          </div>
           <div className="integration-demo__steps">
             <span>Bild optimieren</span>
             <span>Licht &amp; Farben</span>
@@ -65,7 +86,7 @@ export default function IntegrationDemo() {
         </div>
 
         <div className="integration-demo__optimized" aria-hidden="true">
-          <img src={`${base}/friseur-optimized.webp`} alt="" />
+          <FilledImage src={`${base}/friseur-optimized.webp`} className="integration-demo__scene-frame" />
           <div className="integration-demo__shine" />
           <div className="integration-demo__optimized-badge">DFBK.app optimiert</div>
           <div className="integration-demo__optimized-copy">
@@ -93,22 +114,14 @@ export default function IntegrationDemo() {
         </div>
 
         <div className="integration-demo__final" aria-hidden="true">
-          <div style={{ width: '92%', maxWidth: 900, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-            <figure style={{ margin: 0, minWidth: 0, textAlign: 'center' }}>
-              <div style={{ marginBottom: 8, color: '#fff', fontWeight: 800, fontSize: 'clamp(.85rem,1.6vw,1.2rem)' }}>Original</div>
-              <img
-                src={`${base}/friseur-before.webp`}
-                alt=""
-                style={{ width: '100%', height: 'auto', aspectRatio: '1 / 1', objectFit: 'contain', background: '#0b1622', borderRadius: 16, filter: 'none' }}
-              />
+          <div className="integration-demo__compare-grid">
+            <figure className="integration-demo__compare-card">
+              <figcaption>Original</figcaption>
+              <FilledImage src={`${base}/friseur-before.webp`} className="integration-demo__compare-frame" />
             </figure>
-            <figure style={{ margin: 0, minWidth: 0, textAlign: 'center' }}>
-              <div style={{ marginBottom: 8, color: '#fff', fontWeight: 800, fontSize: 'clamp(.85rem,1.6vw,1.2rem)' }}>DFBK.app optimiert</div>
-              <img
-                src={`${base}/friseur-optimized.webp`}
-                alt=""
-                style={{ width: '100%', height: 'auto', aspectRatio: '1 / 1', objectFit: 'contain', background: '#0b1622', borderRadius: 16, filter: 'none' }}
-              />
+            <figure className="integration-demo__compare-card integration-demo__compare-card--optimized">
+              <figcaption>DFBK.app optimiert</figcaption>
+              <FilledImage src={`${base}/friseur-optimized.webp`} className="integration-demo__compare-frame" />
             </figure>
           </div>
         </div>
