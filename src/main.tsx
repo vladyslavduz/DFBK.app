@@ -4,6 +4,7 @@ import App from './App';
 import { AuthProvider } from './contexts/AuthContext';
 import { UserAreaProvider } from './contexts/UserAreaContext';
 import './styles/global.css';
+import './styles/auth-v2.css';
 import './styles/user-area.css';
 import './styles/pricing.css';
 
