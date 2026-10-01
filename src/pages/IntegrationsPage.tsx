@@ -2,28 +2,41 @@ import PageShell from '../components/PageShell';
 import IntegrationDemo from '../components/IntegrationDemo';
 import '../styles/integrations-share.css';
 
-const icons = '/visual/integrations/icons';
-
 const social = [
-  ['instagram.svg', 'Instagram', 'Feed / Reel'],
-  ['facebook.svg', 'Facebook', 'Post / Story'],
-  ['linkedin.svg', 'LinkedIn', 'Post'],
-  ['x.svg', 'X', 'Post'],
-  ['pinterest.svg', 'Pinterest', 'Pin']
+  ['https://cdn.simpleicons.org/instagram/E4405F', 'Instagram'],
+  ['https://cdn.simpleicons.org/facebook/0866FF', 'Facebook'],
+  ['https://cdn.simpleicons.org/tiktok/000000', 'TikTok'],
+  ['https://cdn.simpleicons.org/linkedin/0A66C2', 'LinkedIn'],
+  ['https://cdn.simpleicons.org/pinterest/BD081C', 'Pinterest'],
+  ['https://cdn.simpleicons.org/x/000000', 'X']
 ] as const;
 
 const messengers = [
-  ['whatsapp.svg', 'WhatsApp', 'Chat / Status'],
-  ['telegram.svg', 'Telegram', 'Chat / Kanal']
+  ['https://cdn.simpleicons.org/whatsapp/25D366', 'WhatsApp'],
+  ['https://cdn.simpleicons.org/messenger/00B2FF', 'Messenger'],
+  ['https://cdn.simpleicons.org/telegram/26A5E4', 'Telegram'],
+  ['https://cdn.simpleicons.org/signal/3A76F0', 'Signal']
 ] as const;
 
 const websites = [
-  ['WP', 'WordPress', 'Embed / Media'],
-  ['J!', 'Joomla', 'Embed / Media'],
-  ['W', 'Wix', 'Embed'],
-  ['WF', 'Webflow', 'Embed'],
-  ['</>', 'Eigene Website', 'HTML / Link']
+  ['https://cdn.simpleicons.org/wordpress/21759B', 'WordPress'],
+  ['https://cdn.simpleicons.org/wix/0C0C0C', 'Wix'],
+  ['https://cdn.simpleicons.org/joomla/5091CD', 'Joomla'],
+  ['https://cdn.simpleicons.org/webflow/146EF5', 'Webflow'],
+  ['https://cdn.simpleicons.org/squarespace/000000', 'Squarespace']
 ] as const;
+
+function BrandRow({ items }: { items: readonly (readonly [string, string])[] }) {
+  return (
+    <div className="share-brand-row">
+      {items.map(([src, name]) => (
+        <button className="share-brand" type="button" key={name} aria-label={name} title={name}>
+          <img src={src} alt="" />
+        </button>
+      ))}
+    </div>
+  );
+}
 
 export default function IntegrationsPage() {
   return (
@@ -58,71 +71,23 @@ export default function IntegrationsPage() {
           </div>
         </div>
 
-        <div className="share-zone">
-          <div className="share-zone__head">
-            <h3>Soziale Netzwerke</h3>
-            <span>Video + Werbetext + Link</span>
-          </div>
-          <div className="share-zone__grid">
-            {social.map(([file, name, meta]) => (
-              <div className="share-tile" key={name}>
-                <img src={`${icons}/${file}`} alt="" />
-                <strong>{name}</strong>
-                <small>{meta}</small>
-              </div>
-            ))}
-          </div>
+        <div className="share-zone share-zone--compact">
+          <h3>Teilen · Soziale Netzwerke</h3>
+          <BrandRow items={social} />
         </div>
 
-        <div className="share-zone">
-          <div className="share-zone__head">
-            <h3>Messenger</h3>
-            <span>Direkt senden oder systemweit teilen</span>
-          </div>
-          <div className="share-zone__grid">
-            {messengers.map(([file, name, meta]) => (
-              <div className="share-tile" key={name}>
-                <img src={`${icons}/${file}`} alt="" />
-                <strong>{name}</strong>
-                <small>{meta}</small>
-              </div>
-            ))}
-            <div className="share-tile">
-              <span className="share-tile__glyph">M</span>
-              <strong>Messenger</strong>
-              <small>Direkt teilen</small>
-            </div>
-            <div className="share-tile">
-              <span className="share-tile__glyph">S</span>
-              <strong>Signal</strong>
-              <small>System Share</small>
-            </div>
-            <div className="share-tile">
-              <span className="share-tile__glyph">•••</span>
-              <strong>Mehr</strong>
-              <small>Weitere Apps</small>
-            </div>
-          </div>
+        <div className="share-zone share-zone--compact">
+          <h3>Teilen · Messenger</h3>
+          <BrandRow items={messengers} />
         </div>
 
-        <div className="share-zone">
-          <div className="share-zone__head">
-            <h3>Website &amp; CMS</h3>
-            <span>Einbetten, kopieren oder später direkt verbinden</span>
-          </div>
-          <div className="share-zone__grid">
-            {websites.map(([glyph, name, meta]) => (
-              <div className="share-tile" key={name}>
-                <span className="share-tile__glyph">{glyph}</span>
-                <strong>{name}</strong>
-                <small>{meta}</small>
-              </div>
-            ))}
-          </div>
+        <div className="share-zone share-zone--compact">
+          <h3>Teilen · Website &amp; CMS</h3>
+          <BrandRow items={websites} />
         </div>
 
         <p className="share-hub__note">
-          <strong>Prototyp:</strong> Die Elemente sind absichtlich noch ohne Funktion. Im nächsten Schritt definieren wir pro Kanal Share-Link, Web Share, OAuth/API oder Embed-Workflow.
+          <strong>Prototyp:</strong> Die Symbole sind noch ohne Funktion. Im nächsten Schritt verbinden wir jeden Kanal mit dem passenden Share-, API- oder Embed-Workflow.
         </p>
       </section>
     </PageShell>
