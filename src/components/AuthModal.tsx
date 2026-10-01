@@ -28,6 +28,25 @@ function getErrorMessage(error: unknown) {
   return errorMessages[error.name] || errorMessages[error.message] || 'Etwas ist schiefgelaufen. Bitte versuche es erneut.';
 }
 
+function GoogleIcon() {
+  return (
+    <svg className="auth-v2-provider-icon" aria-hidden="true" viewBox="0 0 24 24">
+      <path fill="#4285F4" d="M21.6 12.2c0-.7-.1-1.4-.2-2H12v3.8h5.4a4.6 4.6 0 0 1-2 3v2.5h3.2c1.9-1.8 3-4.3 3-7.3Z" />
+      <path fill="#34A853" d="M12 22c2.7 0 5-.9 6.6-2.4l-3.2-2.5c-.9.6-2 1-3.4 1-2.6 0-4.9-1.8-5.7-4.2H3v2.6A10 10 0 0 0 12 22Z" />
+      <path fill="#FBBC05" d="M6.3 13.9A6 6 0 0 1 6 12c0-.7.1-1.3.3-1.9V7.5H3A10 10 0 0 0 2 12c0 1.6.4 3.1 1 4.5l3.3-2.6Z" />
+      <path fill="#EA4335" d="M12 5.9c1.5 0 2.8.5 3.9 1.5l2.9-2.9A9.8 9.8 0 0 0 12 2 10 10 0 0 0 3 7.5l3.3 2.6C7.1 7.7 9.4 5.9 12 5.9Z" />
+    </svg>
+  );
+}
+
+function AppleIcon() {
+  return (
+    <svg className="auth-v2-provider-icon" aria-hidden="true" viewBox="0 0 24 24">
+      <path d="M17.1 12.7c0-2.4 2-3.6 2.1-3.7a4.6 4.6 0 0 0-3.7-2c-1.6-.2-3.1.9-3.9.9-.8 0-2-1-3.3-1-1.7 0-3.3 1-4.2 2.5-1.8 3.1-.5 7.8 1.3 10.4.9 1.3 2 2.8 3.4 2.7 1.3-.1 1.8-.9 3.4-.9 1.6 0 2 .9 3.4.9 1.4 0 2.3-1.3 3.2-2.6 1-1.5 1.5-3 1.5-3.1-.1 0-3.3-1.3-3.3-4.1ZM14.5 5.4c.7-.9 1.2-2.1 1.1-3.3-1.1 0-2.4.7-3.2 1.6-.7.8-1.3 2-1.1 3.2 1.2.1 2.5-.6 3.2-1.5Z" />
+    </svg>
+  );
+}
+
 export default function AuthModal({ open, initialMode = 'login', initialError = '', onClose, onAuthenticated, returnFocusRef }: Props) {
   const { login, register, startGoogle } = useAuth();
   const [mode, setMode] = useState<AuthMode>(initialMode);
@@ -48,6 +67,7 @@ export default function AuthModal({ open, initialMode = 'login', initialError = 
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     requestAnimationFrame(() => firstInputRef.current?.focus());
+
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') onClose();
       if (event.key !== 'Tab') return;
@@ -63,6 +83,7 @@ export default function AuthModal({ open, initialMode = 'login', initialError = 
         first.focus();
       }
     };
+
     window.addEventListener('keydown', handleKeyDown);
     return () => {
       document.body.style.overflow = previousOverflow;
@@ -113,49 +134,100 @@ export default function AuthModal({ open, initialMode = 'login', initialError = 
 
   function handleApple() {
     setError('');
-    setStatus('Apple-Anmeldung ist als Oberfläche vorbereitet und wird nach dem Backend-Anschluss aktiviert.');
+    setStatus('Apple-Anmeldung wird nach dem Backend-Anschluss aktiviert.');
   }
 
   if (mode === 'verify') {
     return (
-      <div className="auth-modal-backdrop" onMouseDown={event => event.target === event.currentTarget && onClose()}>
-        <section ref={dialogRef} className="auth-modal auth-verification" role="dialog" aria-modal="true" aria-labelledby="auth-modal-title">
-          <header className="auth-modal-header"><img src="/brand/dfbk-logo.svg" alt="DFBK.app" /><button className="auth-modal-close" type="button" onClick={onClose} aria-label="Fenster schließen"><span aria-hidden="true">×</span></button></header>
-          <div className="verification-symbol" aria-hidden="true">✉</div>
-          <h2 id="auth-modal-title">Bestätige deine E-Mail-Adresse</h2>
-          <p>Wir haben dir eine E-Mail mit einem Bestätigungslink geschickt.</p>
+      <div className="auth-modal-backdrop auth-v2-backdrop" onMouseDown={event => event.target === event.currentTarget && onClose()}>
+        <section ref={dialogRef} className="auth-modal auth-v2 auth-v2-verify" role="dialog" aria-modal="true" aria-labelledby="auth-modal-title">
+          <header className="auth-v2-header">
+            <img src="/brand/dfbk-logo.svg" alt="DFBK.app" />
+            <button className="auth-v2-close" type="button" onClick={onClose} aria-label="Fenster schließen"><span aria-hidden="true">×</span></button>
+          </header>
+          <div className="auth-v2-verify-symbol" aria-hidden="true">✉</div>
+          <h2 id="auth-modal-title">E-Mail bestätigen</h2>
+          <p className="auth-v2-subtitle">Wir haben dir einen Bestätigungslink geschickt.</p>
           <strong className="verification-email">{email}</strong>
           {error && <p className="auth-error" role="alert">{error}</p>}
           {status && <p className="auth-demo-message" role="status">{status}</p>}
-          <button className="button auth-submit" type="button" onClick={() => setStatus('Die erneute Zustellung wird mit einem separaten Backend-Endpunkt verbunden.')}>E-Mail erneut senden</button>
-          <button className="text-button" type="button" onClick={() => selectMode('register')}>E-Mail-Adresse korrigieren</button>
-          <button className="text-button" type="button" onClick={() => selectMode('login')}>Zurück zur Anmeldung</button>
+          <button className="button auth-v2-submit" type="button" onClick={() => setStatus('Die erneute Zustellung wird mit einem separaten Backend-Endpunkt verbunden.')}>E-Mail erneut senden</button>
+          <div className="auth-v2-verify-actions">
+            <button className="text-button" type="button" onClick={() => selectMode('register')}>E-Mail ändern</button>
+            <button className="text-button" type="button" onClick={() => selectMode('login')}>Zur Anmeldung</button>
+          </div>
         </section>
       </div>
     );
   }
 
+  const isLogin = mode === 'login';
+
   return (
-    <div className="auth-modal-backdrop" onMouseDown={event => event.target === event.currentTarget && onClose()}>
-      <section ref={dialogRef} className="auth-modal" role="dialog" aria-modal="true" aria-labelledby="auth-modal-title">
-        <header className="auth-modal-header"><img src="/brand/dfbk-logo.svg" alt="DFBK.app" /><button className="auth-modal-close" type="button" onClick={onClose} aria-label="Fenster schließen"><span aria-hidden="true">×</span></button></header>
-        <div className="auth-modal-tabs" role="tablist" aria-label="Konto-Zugang wählen"><button type="button" role="tab" aria-selected={mode === 'login'} className={mode === 'login' ? 'is-active' : ''} onClick={() => selectMode('login')}>Anmelden</button><button type="button" role="tab" aria-selected={mode === 'register'} className={mode === 'register' ? 'is-active' : ''} onClick={() => selectMode('register')}>Registrieren</button></div>
-        <div className="auth-modal-intro"><span className="eyebrow">DFBK.app Konto</span><h2 id="auth-modal-title">{mode === 'login' ? 'Willkommen zurück' : 'Konto erstellen'}</h2><p>{mode === 'login' ? 'Melde dich an und arbeite direkt an deinen Projekten weiter.' : 'Starte kostenlos und mache deine Arbeit Schritt für Schritt sichtbar.'}</p></div>
-        <div className="auth-provider-grid">
-          <button type="button" className="auth-provider" onClick={startGoogle}><span className="auth-provider-icon auth-provider-google" aria-hidden="true">G</span>Mit Google fortfahren</button>
-          <button type="button" className="auth-provider" onClick={handleApple}><svg className="auth-provider-icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M17.1 12.7c0-2.4 2-3.6 2.1-3.7a4.6 4.6 0 0 0-3.7-2c-1.6-.2-3.1.9-3.9.9-.8 0-2-1-3.3-1-1.7 0-3.3 1-4.2 2.5-1.8 3.1-.5 7.8 1.3 10.4.9 1.3 2 2.8 3.4 2.7 1.3-.1 1.8-.9 3.4-.9 1.6 0 2 .9 3.4.9 1.4 0 2.3-1.3 3.2-2.6 1-1.5 1.5-3 1.5-3.1-.1 0-3.3-1.3-3.3-4.1ZM14.5 5.4c.7-.9 1.2-2.1 1.1-3.3-1.1 0-2.4.7-3.2 1.6-.7.8-1.3 2-1.1 3.2 1.2.1 2.5-.6 3.2-1.5Z" /></svg>Mit Apple fortfahren</button>
+    <div className="auth-modal-backdrop auth-v2-backdrop" onMouseDown={event => event.target === event.currentTarget && onClose()}>
+      <section ref={dialogRef} className={`auth-modal auth-v2 ${isLogin ? 'auth-v2-login' : 'auth-v2-register'}`} role="dialog" aria-modal="true" aria-labelledby="auth-modal-title">
+        <header className="auth-v2-header">
+          <img src="/brand/dfbk-logo.svg" alt="DFBK.app" />
+          <button className="auth-v2-close" type="button" onClick={onClose} aria-label="Fenster schließen"><span aria-hidden="true">×</span></button>
+        </header>
+
+        <div className="auth-v2-tabs" role="tablist" aria-label="Konto-Zugang wählen">
+          <button type="button" role="tab" aria-selected={isLogin} className={isLogin ? 'is-active' : ''} onClick={() => selectMode('login')}>Anmelden</button>
+          <button type="button" role="tab" aria-selected={!isLogin} className={!isLogin ? 'is-active' : ''} onClick={() => selectMode('register')}>Registrieren</button>
         </div>
-        <div className="auth-divider"><span>oder</span></div>
-        <form className="auth-form" onSubmit={handleSubmit}>
-          <label>E-Mail-Adresse<input ref={firstInputRef} type="email" name="email" autoComplete="email" value={email} onChange={event => setEmail(event.target.value)} placeholder="name@betrieb.de" required /></label>
-          <label><span className="auth-label-row">Passwort{mode === 'login' && <AppLink to="/forgot-password" onClick={onClose}>Passwort vergessen?</AppLink>}</span><input type="password" name="password" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} value={password} onChange={event => setPassword(event.target.value)} placeholder="Mindestens 8 Zeichen" minLength={8} required /></label>
-          {mode === 'register' && <label>Passwort bestätigen<input type="password" autoComplete="new-password" value={passwordConfirm} onChange={event => setPasswordConfirm(event.target.value)} placeholder="Passwort wiederholen" minLength={8} required /></label>}
-          {mode === 'register' && <label className="auth-consent"><input type="checkbox" required /><span>Ich akzeptiere die <a href="/nutzungsbedingungen">Nutzungsbedingungen</a> und die <a href="/datenschutz">Datenschutzerklärung</a>.</span></label>}
+
+        <div className="auth-v2-title-block">
+          <h2 id="auth-modal-title">{isLogin ? 'Willkommen zurück' : 'Konto erstellen'}</h2>
+        </div>
+
+        <div className="auth-v2-provider-grid">
+          <button type="button" className="auth-v2-provider auth-v2-provider-google" onClick={startGoogle}>
+            <GoogleIcon />
+            <span>Google</span>
+          </button>
+          <button type="button" className="auth-v2-provider auth-v2-provider-apple" onClick={handleApple}>
+            <AppleIcon />
+            <span>Apple</span>
+          </button>
+        </div>
+
+        <div className="auth-v2-divider"><span>oder</span></div>
+
+        <form className="auth-v2-form" onSubmit={handleSubmit}>
+          <label>
+            <span>E-Mail-Adresse</span>
+            <input ref={firstInputRef} type="email" name="email" autoComplete="email" value={email} onChange={event => setEmail(event.target.value)} placeholder="name@betrieb.de" required />
+          </label>
+
+          <label>
+            <span className="auth-v2-label-row">
+              <span>Passwort</span>
+              {isLogin && <AppLink to="/forgot-password" onClick={onClose}>Passwort vergessen?</AppLink>}
+            </span>
+            <input type="password" name="password" autoComplete={isLogin ? 'current-password' : 'new-password'} value={password} onChange={event => setPassword(event.target.value)} placeholder="Mindestens 8 Zeichen" minLength={8} required />
+          </label>
+
+          {!isLogin && (
+            <label>
+              <span>Passwort bestätigen</span>
+              <input type="password" autoComplete="new-password" value={passwordConfirm} onChange={event => setPasswordConfirm(event.target.value)} placeholder="Passwort wiederholen" minLength={8} required />
+            </label>
+          )}
+
+          {!isLogin && (
+            <label className="auth-v2-consent">
+              <input type="checkbox" required />
+              <span>Ich akzeptiere <a href="/nutzungsbedingungen">Nutzungsbedingungen</a> &amp; <a href="/datenschutz">Datenschutz</a>.</span>
+            </label>
+          )}
+
           {error && <p className="auth-error" role="alert">{error}</p>}
           {status && <p className="auth-demo-message" role="status">{status}</p>}
-          <button className="button auth-submit" type="submit" disabled={submitting}>{submitting ? 'Einen Moment…' : mode === 'login' ? 'Anmelden' : 'Konto erstellen'}</button>
+
+          <button className="button auth-v2-submit" type="submit" disabled={submitting}>
+            {submitting ? 'Einen Moment…' : isLogin ? 'Anmelden' : 'Konto erstellen'}
+          </button>
         </form>
-        <p className="auth-switch-copy">{mode === 'login' ? 'Noch kein Konto?' : 'Du hast bereits ein Konto?'} <button type="button" onClick={() => selectMode(mode === 'login' ? 'register' : 'login')}>{mode === 'login' ? 'Registrieren' : 'Anmelden'}</button></p>
       </section>
     </div>
   );
