@@ -1,0 +1,26 @@
+name: Frontend KI Build Check
+
+on:
+  push:
+    branches:
+      - frontend/ki-fotooptimierung-v1
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install
+        run: npm ci
+      - name: Build
+        run: npm run build
+      - name: Diff check
+        run: git diff --check origin/main...HEAD
