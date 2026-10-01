@@ -12,6 +12,7 @@ const channels = [
 
 const base = '/visual/integrations';
 const icons = `${base}/icons`;
+const squareBrand = '/brand/favicon/android-chrome-512x512.png';
 
 export default function IntegrationDemo() {
   return (
@@ -54,7 +55,7 @@ export default function IntegrationDemo() {
 
         <div className="integration-demo__processor" aria-hidden="true">
           <div className="integration-demo__processor-aura" />
-          <img className="integration-demo__neon-logo" src={`${icons}/dfbk-neon.svg`} alt="" />
+          <img className="integration-demo__neon-logo" src={squareBrand} alt="" />
           <div className="integration-demo__processing-line" />
           <div className="integration-demo__steps">
             <span>Bild optimieren</span>
@@ -92,7 +93,7 @@ export default function IntegrationDemo() {
         </div>
 
         <div className="integration-demo__final" aria-hidden="true">
-          <img src={`${icons}/dfbk-neon.svg`} alt="" />
+          <img src={squareBrand} alt="" />
           <strong>Dein Foto bringt Kunden.</strong>
         </div>
       </div>
