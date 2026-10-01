@@ -23,6 +23,26 @@ function FilledImage({ src, alt = '', className = '' }: { src: string; alt?: str
   );
 }
 
+function HaircutTools() {
+  return (
+    <div className="integration-demo__haircut-tools" aria-hidden="true">
+      <svg className="integration-demo__scissors" viewBox="0 0 120 120">
+        <circle cx="28" cy="82" r="14" />
+        <circle cx="54" cy="91" r="14" />
+        <path d="M39 75 101 20" />
+        <path d="M46 79 104 64" />
+        <path d="M43 79 60 64" />
+      </svg>
+      <svg className="integration-demo__comb" viewBox="0 0 140 80">
+        <path d="M16 22h106" />
+        <path d="M22 22v38M33 22v34M44 22v38M55 22v34M66 22v38M77 22v34M88 22v38M99 22v34M110 22v38" />
+        <path d="M16 22c-5 0-8 4-8 9s3 9 8 9" />
+      </svg>
+      <span className="integration-demo__haircut-orbit" />
+    </div>
+  );
+}
+
 export default function IntegrationDemo() {
   return (
     <section className="integration-demo" aria-label="DFBK Content-Demo">
@@ -36,6 +56,13 @@ export default function IntegrationDemo() {
         <div className="integration-demo__scene integration-demo__scene--before" aria-hidden="true">
           <FilledImage src={`${base}/friseur-before.webp`} className="integration-demo__scene-frame" />
           <div className="integration-demo__scene-label">Original</div>
+        </div>
+
+        <HaircutTools />
+
+        <div className="integration-demo__scene integration-demo__scene--aftercut" aria-hidden="true">
+          <FilledImage src={`${base}/friseur-after.webp`} className="integration-demo__scene-frame" />
+          <div className="integration-demo__scene-label integration-demo__scene-label--aftercut">Nach dem Schnitt</div>
         </div>
 
         <div className="integration-demo__phone-photo" aria-hidden="true">
@@ -128,6 +155,7 @@ export default function IntegrationDemo() {
       </div>
 
       <div className="integration-demo__footer">
+        <span>Arbeit erledigen</span><i />
         <span>Foto aufnehmen</span><i />
         <span>DFBK verarbeitet</span><i />
         <span>Content veröffentlichen</span>
