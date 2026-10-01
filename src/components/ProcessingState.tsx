@@ -1,16 +1,19 @@
 import AppIcon from './AppIcon';
 
-const stages = ['Foto verstehen', 'Informationen berücksichtigen', 'Inhalte erstellen'];
+const contentStages = ['Foto verstehen', 'Informationen berücksichtigen', 'Inhalte erstellen'];
+const createStages = ['Foto verstehen', 'Foto optimieren', 'Informationen berücksichtigen', 'Inhalte erstellen'];
 
 type Props = {
   error?: string;
   retrying?: boolean;
+  includesPhotoOptimization?: boolean;
   onRetry?: () => void;
   onChangePhoto?: () => void;
   onReload?: () => void;
 };
 
-export default function ProcessingState({ error, retrying = false, onRetry, onChangePhoto, onReload }: Props) {
+export default function ProcessingState({ error, retrying = false, includesPhotoOptimization = false, onRetry, onChangePhoto, onReload }: Props) {
+  const stages = includesPhotoOptimization ? createStages : contentStages;
   return (
     <section className="wizard-card processing-state" aria-live="polite">
       <span className="processing-orb"><AppIcon name="spark" /></span>
