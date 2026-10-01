@@ -148,13 +148,6 @@ async function generateProjectContent(
 
   const description = project.description?.trim() ?? '';
 
-  if (!description) {
-    return json(
-      { ok: false, error: 'PROJECT_DESCRIPTION_REQUIRED' },
-      400
-    );
-  }
-
   const media = await env.DB
     .prepare(
       `

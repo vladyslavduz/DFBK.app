@@ -107,6 +107,8 @@ export async function generateMarketingContent(
     input.imageBytes
   )}`;
 
+  const optionalContext = input.description.trim();
+
   let response: Response;
 
   try {
@@ -126,12 +128,14 @@ export async function generateMarketingContent(
                 type: 'input_text',
                 text: [
                   'Du erstellst Marketingtexte für DFBK.app für kleine Unternehmen in Deutschland.',
-                  'Nutze ausschließlich die sichtbare Arbeit auf dem Bild und die bereitgestellte Projektbeschreibung.',
-                  'Erfinde keine Preise, Kundennamen, Adressen, Zertifizierungen, Materialien oder Leistungen, die nicht erkennbar bzw. beschrieben sind.',
+                  'Analysiere zuerst das hochgeladene Foto und bestimme, welche ausgeführte Arbeit darauf zuverlässig sichtbar ist.',
+                  'Zusätzlicher Nutzerkontext ist optional und kann z. B. Material, Marke, Produkt, Ort, Technik oder eine andere Information enthalten, die auf dem Bild nicht zuverlässig erkennbar ist.',
+                  'Wenn optionaler Nutzerkontext vorhanden ist, verwende ihn nur, wenn er für die Texte relevant ist.',
+                  'Erfinde niemals Marken, Materialien, Orte, technische Verfahren, Maße, Preise, Kundennamen, Adressen, Zertifizierungen oder andere Tatsachen, die weder zuverlässig auf dem Bild erkennbar noch im Nutzerkontext angegeben sind.',
                   'Schreibe natürliches, professionelles Deutsch ohne übertriebene Werbesprache.',
                   '',
                   `Projekttitel: ${input.title}`,
-                  `Beschreibung der ausgeführten Arbeit: ${input.description}`,
+                  `Optionaler Nutzerkontext: ${optionalContext || 'Nicht angegeben.'}`,
                   '',
                   'Erzeuge genau drei eigenständige Texte:',
                   '1. googleBusiness: kompakter Google-Business-Beitrag, ca. 300–600 Zeichen.',
