@@ -26,7 +26,7 @@ export default function IntegrationDemo() {
       <div className="integration-demo__stage">
         <div className="integration-demo__scene integration-demo__scene--before" aria-hidden="true">
           <img src={`${base}/friseur-before.webp`} alt="" />
-          <div className="integration-demo__scene-label">Foto vorher</div>
+          <div className="integration-demo__scene-label">Original</div>
         </div>
 
         <div className="integration-demo__phone-photo" aria-hidden="true">
@@ -67,7 +67,7 @@ export default function IntegrationDemo() {
         <div className="integration-demo__optimized" aria-hidden="true">
           <img src={`${base}/friseur-optimized.webp`} alt="" />
           <div className="integration-demo__shine" />
-          <div className="integration-demo__optimized-badge">DFBK optimiert</div>
+          <div className="integration-demo__optimized-badge">DFBK.app optimiert</div>
           <div className="integration-demo__optimized-copy">
             <strong>Professioneller Content.</strong>
             <span>Bereit für deine Kanäle.</span>
@@ -93,8 +93,24 @@ export default function IntegrationDemo() {
         </div>
 
         <div className="integration-demo__final" aria-hidden="true">
-          <img src={squareBrand} alt="" />
-          <strong>Dein Foto bringt Kunden.</strong>
+          <div style={{ width: '92%', maxWidth: 900, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            <figure style={{ margin: 0, minWidth: 0, textAlign: 'center' }}>
+              <div style={{ marginBottom: 8, color: '#fff', fontWeight: 800, fontSize: 'clamp(.85rem,1.6vw,1.2rem)' }}>Original</div>
+              <img
+                src={`${base}/friseur-before.webp`}
+                alt=""
+                style={{ width: '100%', height: 'auto', aspectRatio: '1 / 1', objectFit: 'contain', background: '#0b1622', borderRadius: 16, filter: 'none' }}
+              />
+            </figure>
+            <figure style={{ margin: 0, minWidth: 0, textAlign: 'center' }}>
+              <div style={{ marginBottom: 8, color: '#fff', fontWeight: 800, fontSize: 'clamp(.85rem,1.6vw,1.2rem)' }}>DFBK.app optimiert</div>
+              <img
+                src={`${base}/friseur-optimized.webp`}
+                alt=""
+                style={{ width: '100%', height: 'auto', aspectRatio: '1 / 1', objectFit: 'contain', background: '#0b1622', borderRadius: 16, filter: 'none' }}
+              />
+            </figure>
+          </div>
         </div>
       </div>
 
