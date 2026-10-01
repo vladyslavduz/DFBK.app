@@ -47,7 +47,6 @@ type UserAreaContextValue = {
 };
 
 const PROFILE_KEY = 'dfbk.user-area.profile.v1';
-const EMPTY_MEDIA: ProjectMedia = { original: null, optimized: null };
 const UserAreaContext = createContext<UserAreaContextValue | null>(null);
 
 function readStorage<T>(key: string, fallback: T): T {
@@ -78,10 +77,7 @@ function mediaImages(projectId: string, media: ProjectMedia) {
 }
 
 function toAppProject(project: Project): AppProject {
-  const media: ProjectMedia = {
-    original: project.media,
-    optimized: null,
-  };
+  const media: ProjectMedia = { original: project.media, optimized: null };
   return {
     ...project,
     description: project.description || '',
@@ -264,17 +260,12 @@ export function UserAreaProvider({ children }: { children: ReactNode }) {
       setProjects(current => current.map(project => project.id === projectId
         ? { ...project, media: originalOnly, ...mediaImages(projectId, originalOnly) }
         : project));
-      try {
-        await getProjectMedia(projectId);
-      } catch {
-        // Upload is still successful. Media-state refresh is isolated from the project flow.
-      }
       return result.media;
     } catch (error) {
       await handleUnauthorized(error);
       throw error;
     }
-  }, [getProjectMedia, handleUnauthorized]);
+  }, [handleUnauthorized]);
 
   function updateContent(projectId: string, channel: ContentChannel, value: string) {
     setProjects(current => current.map(project => project.id === projectId
