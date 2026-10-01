@@ -7,6 +7,7 @@ import './styles/global.css';
 import './styles/auth-v2.css';
 import './styles/user-area.css';
 import './styles/pricing.css';
+import './styles/image-optimization.css';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
