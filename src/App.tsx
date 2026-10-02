@@ -17,6 +17,8 @@ import LegalPage from './pages/LegalPage';
 import NotFoundPage from './pages/NotFoundPage';
 import EmailVerificationPage from './pages/EmailVerificationPage';
 import AppAccessGate from './components/AppAccessGate';
+import AdminAccessGate from './components/AdminAccessGate';
+import AdminPage from './pages/AdminPage';
 import { navigate } from './lib/router';
 
 function Redirect({ to }: { to: string }) {
@@ -44,6 +46,7 @@ export default function App() {
   if (pathname.startsWith('/app/projects/')) return <AppAccessGate><ProjectDetailPage id={pathname.split('/').filter(Boolean)[2] || '---'} /></AppAccessGate>;
   if (pathname === '/app/settings') return <AppAccessGate><SettingsPage /></AppAccessGate>;
   if (pathname === '/app/billing') return <AppAccessGate><BillingPage /></AppAccessGate>;
+  if (pathname === '/admin') return <AdminAccessGate><AdminPage /></AdminAccessGate>;
   if (pathname === '/dashboard') return <Redirect to="/app" />;
   if (pathname === '/create') return <Redirect to="/app/new" />;
   if (pathname === '/result') return <Redirect to="/app/projects" />;
