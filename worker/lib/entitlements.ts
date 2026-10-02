@@ -65,61 +65,8 @@ export function buildEntitlements(plan: PlanCode): EntitlementsResponse {
   };
 }
 
-export async function getUserPlan(
-  env: Env,
-  userId: string
-): Promise<PlanCode> {
-  const row = await env.DB
-    .prepare(
-      `
-      SELECT plan
-      FROM user_entitlements
-      WHERE user_id = ?1
-      LIMIT 1
-      `
-    )
-    .bind(userId)
-    .first<EntitlementRow>();
-
-  if (!row || !isPlanCode(row.plan)) {
-    return 'trial';
-  }
-
-  return row.plan;
-}
-
-export async function setUserPlan(
-  env: Env,
-  userId: string,
-  plan: PlanCode
-): Promise<void> {
-  if (plan === 'trial') {
-    await env.DB
-      .prepare(
-        `
-        DELETE FROM user_entitlements
-        WHERE user_id = ?1
-        `
-      )
-      .bind(userId)
-      .run();
-    return;
-  }
-
-  await env.DB
-    .prepare(
-      `
-      INSERT INTO user_entitlements (
-        user_id,
-        plan
-      )
-      VALUES (?1, 'business')
-      ON CONFLICT(user_id)
-      DO UPDATE SET
-        plan = 'business',
-        updated_at = CURRENT_TIMESTAMP
-      `
-    )
-    .bind(userId)
-    .run();
+export async function getUserPlan(env: Env, userId: string): Promise<PlanCode> {
+  const row = await env.DB.prepare('SELECT plan FROM users WHERE id = ?1 LIMIT 1')
+    .bind(userId).first<EntitlementRow>();
+  return row && isPlanCode(row.plan) ? row.plan : 'trial';
 }
