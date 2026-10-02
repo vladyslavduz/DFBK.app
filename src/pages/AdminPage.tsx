@@ -60,6 +60,7 @@ export default function AdminPage() {
   const [message, setMessage] = useState('');
   const [mutationPending, setMutationPending] = useState(false);
   const [verificationPending, setVerificationPending] = useState(false);
+  const [statusUncertain, setStatusUncertain] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const searchRequestId = useRef(0);
   const mutationId = useRef(0);
@@ -81,6 +82,7 @@ export default function AdminPage() {
     setSelectedPlan('trial');
     setMessage('');
     setConfirmOpen(false);
+    setStatusUncertain(false);
   }
 
   async function searchExact(normalizedEmail: string, mode: 'normal' | 'verify' = 'normal') {
@@ -97,12 +99,14 @@ export default function AdminPage() {
       if (requestId !== searchRequestId.current) return null;
       setTarget(found);
       setSelectedPlan(found.plan);
+      setStatusUncertain(false);
       setSearchState('found');
       if (mode === 'verify') setMessage('Serverstatus wurde erneut geladen.');
       return found;
     } catch (error) {
       if (requestId !== searchRequestId.current) return null;
-      setTarget(null);
+      if (mode === 'normal') setTarget(null);
+      if (mode === 'verify') setStatusUncertain(true);
       if (error instanceof ApiError && error.code === 'USER_NOT_FOUND') {
         setSearchState('not-found');
         setMessage('Kein Nutzer mit dieser E-Mail-Adresse gefunden.');
@@ -114,7 +118,7 @@ export default function AdminPage() {
         setSearchState('error');
         setMessage('Du hast keinen Zugriff auf diese Admin-Funktion.');
       } else {
-        setSearchState('error');
+        if (mode === 'normal') setSearchState('error');
         setMessage(adminErrorMessage(error, 'search'));
       }
       return null;
@@ -175,6 +179,8 @@ export default function AdminPage() {
         setVerificationPending(true);
         const verified = await searchExact(fixedTarget.email, 'verify');
         if (!verified && requestId === mutationId.current) {
+          setStatusUncertain(true);
+          setSearchState('found');
           setMessage('Das Ergebnis der Änderung konnte nicht bestätigt werden. Bitte prüfe den Status erneut.');
         }
       }
@@ -183,7 +189,7 @@ export default function AdminPage() {
     }
   }
 
-  const controlsLocked = mutationPending || verificationPending || searchState === 'searching';
+  const controlsLocked = mutationPending || verificationPending || searchState === 'searching' || statusUncertain;
   const canChange = Boolean(target && selectedPlan !== target.plan && !controlsLocked);
 
   return (
@@ -231,8 +237,8 @@ export default function AdminPage() {
             {verificationPending && <button className="button button-secondary" type="button" disabled>Status wird geprüft …</button>}
           </div>
 
-          {message.includes('konnte nicht bestätigt') && (
-            <button className="button button-secondary" type="button" disabled={controlsLocked} onClick={() => void searchExact(target.email, 'verify')}>Status erneut prüfen</button>
+          {statusUncertain && (
+            <button className="button button-secondary admin-recheck-button" type="button" disabled={mutationPending || verificationPending} onClick={() => void searchExact(target.email, 'verify')}>Status erneut prüfen</button>
           )}
         </section>
       )}
