@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { authService, type AuthUser, type RegisterResult } from '../services/auth';
 import { navigate } from '../lib/router';
+import { ApiError } from '../lib/api';
 
 type AuthContextValue = {
   user: AuthUser | null;
@@ -42,10 +43,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   async function login(email: string, password: string) {
-    await authService.login(email, password);
-    const current = await authService.me();
-    setUser(current.user);
-    return current.user;
+    const loginResult = await authService.login(email, password);
+    try {
+      const current = await authService.me();
+      setUser(current.user);
+      return current.user;
+    } catch (error) {
+      if (error instanceof ApiError) throw error;
+      setUser(loginResult.user);
+      return loginResult.user;
+    }
   }
 
   async function register(email: string, password: string) {
