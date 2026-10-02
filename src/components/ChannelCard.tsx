@@ -35,8 +35,8 @@ export default function ChannelCard({ channel, value, onChange, projectId, proje
 
   useEffect(() => {
     if (!shareEnabled) return;
-    void prepareProjectShareImage(projectId);
-  }, [projectId, shareEnabled]);
+    void prepareProjectShareImage(projectId, downloadImage || '');
+  }, [downloadImage, projectId, shareEnabled]);
 
   async function copy() {
     await navigator.clipboard.writeText(value);
@@ -53,6 +53,7 @@ export default function ChannelCard({ channel, value, onChange, projectId, proje
         projectId,
         title: projectTitle,
         text: value,
+        imageVersion: downloadImage || '',
       });
       if (outcome !== 'cancelled') setShareMessage(shareFeedback(outcome));
     } finally {
