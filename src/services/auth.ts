@@ -5,6 +5,12 @@ export type AuthUser = {
   id: string;
   email: string;
   emailVerified: boolean;
+  role?: 'user' | 'admin';
+  plan?: 'trial' | 'business';
+  planSource?: 'system' | 'manual_admin' | 'stripe';
+  trialExpiresAt?: string | null;
+  planUpdatedAt?: string | null;
+  createdAt?: string;
 };
 
 export type AuthResult = { ok: true; user: AuthUser };
