@@ -40,10 +40,10 @@ function FeatureShell({ step, profession, professionIcon, photo, photoAlt, title
 
 function PraxisFeatureDemo() {
   return (
-    <FeatureShell step="01" profession="Praxis" professionIcon="✚" photo="/visual/features/praxis-feature-photo.webp" photoAlt="Mitarbeiterin dokumentiert eine Arbeit in der Praxis" title="Foto, Text oder Sprache" description="Lade Fotos deiner Arbeit hoch und ergänze die wichtigsten Informationen per Text oder Sprache." note="Einfach dokumentieren. DFBK erledigt den Rest.">
+    <FeatureShell step="01" profession="Praxis" professionIcon="✚" photo="/visual/features/praxis-feature-photo.webp" photoAlt="Mitarbeiterin dokumentiert eine Arbeit in der Praxis" title="Foto zuerst. Zusatzinfo optional." description="Lade ein Foto deiner Arbeit hoch. Wenn etwas auf dem Foto nicht erkennbar ist, kannst du Material, Marke, Ort oder eine Besonderheit per Text oder Sprache ergänzen." note="DFBK erkennt deine Arbeit selbst. Du ergänzt nur, was nicht sichtbar ist.">
       <div className="feature-demo-row feature-demo-row-blue"><span className="feature-demo-icon" aria-hidden="true">⌾</span><span>Foto hinzufügen</span><span className="feature-demo-arrow" aria-hidden="true">›</span></div>
-      <div className="feature-demo-row feature-demo-row-amber"><span className="feature-demo-icon" aria-hidden="true">≡</span><span>Text schreiben</span><span className="feature-demo-arrow" aria-hidden="true">›</span></div>
-      <div className="feature-demo-row feature-demo-row-green"><span className="feature-demo-icon" aria-hidden="true">◉</span><span>Sprache aufnehmen</span><span className="feature-demo-arrow" aria-hidden="true">›</span></div>
+      <div className="feature-demo-row feature-demo-row-amber"><span className="feature-demo-icon" aria-hidden="true">≡</span><span>Zusatzinfo schreiben</span><span className="feature-demo-arrow" aria-hidden="true">›</span></div>
+      <div className="feature-demo-row feature-demo-row-green"><span className="feature-demo-icon" aria-hidden="true">◉</span><span>Zusatzinfo sprechen</span><span className="feature-demo-arrow" aria-hidden="true">›</span></div>
       <div className="feature-demo-next">Weiter</div>
     </FeatureShell>
   );
@@ -51,7 +51,7 @@ function PraxisFeatureDemo() {
 
 function AnalysisFeatureDemo() {
   return (
-    <FeatureShell step="02" profession="Handwerk" professionIcon="◆" photo="/visual/features/handwerk-feature-photo.webp" photoAlt="Maßgefertigter Einbauschrank aus Holz" title="Intelligente Fotoanalyse" description="DFBK erkennt Ergebnisse, Materialien und wichtige Details deiner Arbeit automatisch." note="Wichtige Details automatisch erkennen.">
+    <FeatureShell step="02" profession="Handwerk" professionIcon="◆" photo="/visual/features/handwerk-feature-photo.webp" photoAlt="Maßgefertigter Einbauschrank aus Holz" title="DFBK versteht dein Foto" description="DFBK erkennt sichtbare Ergebnisse und wichtige Details deiner Arbeit automatisch." note="Nicht sichtbare Informationen kannst du optional ergänzen.">
       <div className="feature-analysis-panel">
         <div className="feature-panel-heading"><strong>Foto wird analysiert</strong><span className="feature-check" aria-hidden="true">✓</span></div>
         <div className="feature-analysis-track" aria-hidden="true"><span /></div>
@@ -65,7 +65,7 @@ function AnalysisFeatureDemo() {
 
 function TextFeatureDemo() {
   return (
-    <FeatureShell step="03" profession="Friseur" professionIcon="✂" photo="/visual/features/friseur-feature-photo.webp" photoAlt="Elegante Hochsteckfrisur im Friseursalon" title="Professionelle Texte mit DFBK.app" description="Aus deinen Angaben erstellt DFBK.app verständliche und überzeugende Beschreibungen für deine Kunden." note="Professionell formuliert. Sofort einsatzbereit.">
+    <FeatureShell step="03" profession="Friseur" professionIcon="✂" photo="/visual/features/friseur-feature-photo.webp" photoAlt="Elegante Hochsteckfrisur im Friseursalon" title="Professionelle Texte mit DFBK.app" description="Aus dem Foto und deiner optionalen Zusatzinfo erstellt DFBK.app verständliche Texte für deine Kunden." note="Professionell formuliert. Sofort einsatzbereit.">
       <div className="feature-text-panel">
         <span className="feature-ready-badge"><span aria-hidden="true" />DFBK.app fertig</span>
         <strong className="feature-generated-title">Elegante Hochsteckfrisur</strong>
@@ -119,10 +119,10 @@ function ActionsFeatureDemo() {
   const actions = [
     { icon: '▣', label: 'Kopieren', tone: 'blue' },
     { icon: '✎', label: 'Bearbeiten', tone: 'amber' },
-    { icon: '↑', label: 'Exportieren', tone: 'green' }
+    { icon: '↑', label: 'Teilen', tone: 'green' }
   ];
   return (
-    <FeatureShell step="06" profession="Gastronomie" professionIcon="♨" photo="/visual/features/gastronomie-actions-photo.webp" photoAlt="Fertiger Gastronomie-Inhalt für die weitere Verwendung" title="Einfach verwenden" description="Kopiere, exportiere oder bearbeite die fertigen Inhalte mit wenigen Klicks." note="Fertig bedeutet: direkt weiterverwenden.">
+    <FeatureShell step="06" profession="Gastronomie" professionIcon="♨" photo="/visual/features/gastronomie-actions-photo.webp" photoAlt="Fertiger Gastronomie-Inhalt für die weitere Verwendung" title="Einfach verwenden" description="Kopiere, teile oder bearbeite die fertigen Inhalte mit wenigen Klicks." note="Fertig bedeutet: direkt weiterverwenden.">
       <div className="feature-use-panel">
         <div className="feature-content-preview"><span className="feature-preview-art" aria-hidden="true"><span /></span><div><strong>Dein Inhalt ist fertig</strong><span /><span /><span /></div></div>
         <div className="feature-use-actions">
