@@ -132,11 +132,6 @@ export default function AuthModal({ open, initialMode = 'login', initialError = 
     }
   }
 
-  function handleApple() {
-    setError('');
-    setStatus('Apple-Anmeldung wird nach dem Backend-Anschluss aktiviert.');
-  }
-
   if (mode === 'verify') {
     return (
       <div className="auth-modal-backdrop auth-v2-backdrop" onMouseDown={event => event.target === event.currentTarget && onClose()}>
@@ -151,7 +146,7 @@ export default function AuthModal({ open, initialMode = 'login', initialError = 
           <strong className="verification-email">{email}</strong>
           {error && <p className="auth-error" role="alert">{error}</p>}
           {status && <p className="auth-demo-message" role="status">{status}</p>}
-          <button className="button auth-v2-submit" type="button" onClick={() => setStatus('Die erneute Zustellung wird mit einem separaten Backend-Endpunkt verbunden.')}>E-Mail erneut senden</button>
+          <button className="button auth-v2-submit" type="button" disabled title="Noch nicht verfügbar">E-Mail erneut senden · Demnächst</button>
           <div className="auth-v2-verify-actions">
             <button className="text-button" type="button" onClick={() => selectMode('register')}>E-Mail ändern</button>
             <button className="text-button" type="button" onClick={() => selectMode('login')}>Zur Anmeldung</button>
@@ -185,9 +180,9 @@ export default function AuthModal({ open, initialMode = 'login', initialError = 
             <GoogleIcon />
             <span>Google</span>
           </button>
-          <button type="button" className="auth-v2-provider auth-v2-provider-apple" onClick={handleApple}>
+          <button type="button" className="auth-v2-provider auth-v2-provider-apple" disabled title="Apple-Anmeldung ist noch nicht verfügbar">
             <AppleIcon />
-            <span>Apple</span>
+            <span>Apple · Demnächst</span>
           </button>
         </div>
 

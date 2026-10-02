@@ -83,7 +83,7 @@ export default function CreateProjectPage() {
             optimizedImage: media.optimized ? getProjectMediaUrl(createdProject.id, media.optimized.id) : null,
           };
         } catch {
-          setMediaLoadError('Die KI-Bildversion konnte noch nicht geladen werden. Das Original bleibt verfügbar.');
+          setMediaLoadError('Die von DFBK.app optimierte Bildversion konnte noch nicht geladen werden. Das Original bleibt verfügbar.');
         }
 
         createdProjectRef.current = createdProject;

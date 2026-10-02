@@ -1,7 +1,7 @@
 import AppIcon from './AppIcon';
 
-const contentStages = ['Foto verstehen', 'Informationen berücksichtigen', 'Inhalte erstellen'];
-const createStages = ['Foto verstehen', 'Foto optimieren', 'Informationen berücksichtigen', 'Inhalte erstellen'];
+const contentStages = ['Foto verstehen', 'Zusatzinfo berücksichtigen (falls vorhanden)', 'Inhalte erstellen'];
+const createStages = ['Foto verstehen', 'Foto optimieren', 'Zusatzinfo berücksichtigen (falls vorhanden)', 'Inhalte erstellen'];
 
 type Props = {
   error?: string;

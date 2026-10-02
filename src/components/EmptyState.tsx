@@ -12,7 +12,7 @@ export default function EmptyState() {
       </div>
       <ol className="empty-flow" aria-label="So funktioniert DFBK.app">
         <li><span><AppIcon name="camera" /></span><strong>Foto</strong></li>
-        <li><span><AppIcon name="edit" /></span><strong>Beschreiben</strong></li>
+        <li><span><AppIcon name="edit" /></span><strong>Zusatzinfo</strong></li>
         <li><span><AppIcon name="spark" /></span><strong>DFBK.app</strong></li>
         <li><span><AppIcon name="check" /></span><strong>Fertig</strong></li>
       </ol>
