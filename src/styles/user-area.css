@@ -354,7 +354,7 @@
   .channel-card header { align-items: flex-start; }
   .channel-ready { font-size: .68rem !important; }
   .channel-actions { display: grid; grid-template-columns: 1fr 1fr; }
-  .channel-actions button { justify-content: center; }
+  .channel-actions button, .channel-actions a { justify-content: center; }
   .visibility-panel { align-items: flex-start; flex-direction: column; }
   .channel-pills { justify-content: flex-start; }
   .wizard-result-actions { align-items: stretch; flex-direction: column; }
