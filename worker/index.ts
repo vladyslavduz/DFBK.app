@@ -1,5 +1,6 @@
 import type { Env } from './lib/env';
 import { json } from './lib/response';
+import { handleAdmin } from './routes/admin';
 import { handleAuth } from './routes/auth';
 import { handleAI } from './routes/ai';
 import { handleEntitlements } from './routes/entitlements';
@@ -86,6 +87,7 @@ export default {
     }
 
     const response =
+      (await handleAdmin(request, env, url.pathname)) ||
       (await handleAuth(request, env, url.pathname)) ||
       (await handleEntitlements(request, env, url.pathname)) ||
       handleAI(url.pathname) ||

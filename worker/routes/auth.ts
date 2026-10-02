@@ -1,3 +1,4 @@
+import { requireUser, serializeUser } from '../lib/user';
 import type { Env } from '../lib/env';
 import { json, notImplemented } from '../lib/response';
 
@@ -41,15 +42,6 @@ type RegisterBody = {
 type LoginBody = {
   email?: string;
   password?: string;
-};
-
-type CurrentSessionRow = {
-  session_id: string;
-  user_id: string;
-  expires_at: string;
-  revoked_at: string | null;
-  email: string;
-  email_verified: number;
 };
 
 type VerificationTokenRow = {
@@ -973,85 +965,11 @@ async function getCurrentUser(
   request: Request,
   env: Env
 ): Promise<Response> {
-  const sessionToken = getCookie(
-    request,
-    'dfbk_session'
-  );
-
-  if (!sessionToken) {
-    return json(
-      { ok: false, error: 'NOT_AUTHENTICATED' },
-      401
-    );
-  }
-
-  const tokenHash = await hashSessionToken(
-    sessionToken
-  );
-
-  const session = await env.DB
-    .prepare(
-      `
-      SELECT
-        sessions.id AS session_id,
-        sessions.user_id,
-        sessions.expires_at,
-        sessions.revoked_at,
-        users.email,
-        users.email_verified
-      FROM sessions
-      INNER JOIN users
-        ON users.id = sessions.user_id
-      WHERE sessions.token_hash = ?1
-      LIMIT 1
-      `
-    )
-    .bind(tokenHash)
-    .first<CurrentSessionRow>();
-
-  if (!session) {
-    return json(
-      { ok: false, error: 'INVALID_SESSION' },
-      401
-    );
-  }
-
-  if (session.revoked_at !== null) {
-    return json(
-      { ok: false, error: 'SESSION_REVOKED' },
-      401
-    );
-  }
-
-  const expiresAt = new Date(
-    session.expires_at
-  );
-
-  if (
-    Number.isNaN(expiresAt.getTime()) ||
-    expiresAt.getTime() <= Date.now()
-  ) {
-    return json(
-      { ok: false, error: 'SESSION_EXPIRED' },
-      401
-    );
-  }
-
-  return json(
-    {
-      ok: true,
-      user: {
-        id: session.user_id,
-        email: session.email,
-        emailVerified:
-          session.email_verified === 1,
-      },
-      session: {
-        expiresAt: session.expires_at,
-      },
-    },
-    200
-  );
+  // Preserve the existing response fields and session expiry; add plan/role fields only.
+  const user = await requireUser(request, env);
+  if (user instanceof Response) return user;
+  return json({ ok: true, user: { ...serializeUser(user), emailVerified: user.email_verified === 1 },
+    session: { expiresAt: user.session_expires_at } });
 }
 
 
