@@ -42,9 +42,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   async function login(email: string, password: string) {
-    const result = await authService.login(email, password);
-    setUser(result.user);
-    return result.user;
+    await authService.login(email, password);
+    const current = await authService.me();
+    setUser(current.user);
+    return current.user;
   }
 
   async function register(email: string, password: string) {
