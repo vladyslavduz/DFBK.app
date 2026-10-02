@@ -51,7 +51,7 @@ export const pricingConfig = {
       features: [
         { label: '2 Projekte kostenlos ausprobieren', availability: 'available' },
         { label: 'Eigenes Foto verwenden', availability: 'available' },
-        { label: 'Arbeit kurz beschreiben', availability: 'available' },
+        { label: 'Optionale Zusatzinfo ergänzen', availability: 'available' },
         { label: 'Inhalte von DFBK.app erstellen lassen', availability: 'available' },
         { label: 'Ergebnis direkt ansehen', availability: 'available' },
       ],
@@ -79,7 +79,8 @@ export const pricingConfig = {
         { label: 'Projekte und Referenzen speichern', availability: 'available' },
         { label: 'Inhalte kopieren und herunterladen', availability: 'available' },
         { label: 'Unbegrenzte Spracheingabe im Business-Zugang', availability: 'available' },
-        { label: 'Direktes Teilen und Business-Integrationen', availability: 'planned' },
+        { label: 'Inhalte direkt über das System-Menü teilen', availability: 'available' },
+        { label: 'Direkte Business-Integrationen', availability: 'planned' },
       ],
       // Until billing exists, do not pretend that Pro can already be purchased.
       cta: 'Zuerst ausprobieren',
