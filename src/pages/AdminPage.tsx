@@ -67,7 +67,13 @@ export default function AdminPage() {
   const confirmButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
-    if (confirmOpen) requestAnimationFrame(() => confirmButtonRef.current?.focus());
+    if (!confirmOpen) return;
+    requestAnimationFrame(() => confirmButtonRef.current?.focus());
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setConfirmOpen(false);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
   }, [confirmOpen]);
 
   useEffect(() => {
@@ -111,10 +117,14 @@ export default function AdminPage() {
         setSearchState('not-found');
         setMessage('Kein Nutzer mit dieser E-Mail-Adresse gefunden.');
       } else if (error instanceof ApiError && error.status === 401) {
+        setTarget(null);
+        setStatusUncertain(false);
         setSearchState('error');
         setMessage('Deine Sitzung ist nicht mehr gültig. Bitte melde dich erneut an.');
         await refresh();
       } else if (error instanceof ApiError && error.status === 403) {
+        setTarget(null);
+        setStatusUncertain(false);
         setSearchState('error');
         setMessage('Du hast keinen Zugriff auf diese Admin-Funktion.');
       } else {
