@@ -16,6 +16,8 @@ const secondaryItems = [
   { to: '/app/billing', label: 'Tarif', icon: 'card' as const },
 ];
 
+const adminItem = { to: '/admin', label: 'Admin', icon: 'user' as const };
+
 function NavItem({ item, pathname }: { item: (typeof primaryItems)[number] | (typeof secondaryItems)[number]; pathname: string }) {
   const active = 'exact' in item && item.exact ? pathname === item.to : pathname === item.to || pathname.startsWith(`${item.to}/`);
   return <AppLink className={`app-nav-link${active ? ' is-active' : ''}${'accent' in item && item.accent ? ' is-accent' : ''}`} to={item.to}><AppIcon name={item.icon} /><span>{item.label}</span></AppLink>;
@@ -34,7 +36,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         <AppLink className="app-brand" to="/" aria-label="DFBK.app Startseite"><img src="/brand/dfbk-logo.svg" alt="DFBK.app" /></AppLink>
         <nav className="app-sidebar-nav" aria-label="Persönlicher Bereich">
           <div>{primaryItems.map(item => <NavItem item={item} pathname={pathname} key={item.to} />)}</div>
-          <div className="app-sidebar-secondary">{secondaryItems.map(item => <NavItem item={item} pathname={pathname} key={item.to} />)}</div>
+          <div className="app-sidebar-secondary">{secondaryItems.map(item => <NavItem item={item} pathname={pathname} key={item.to} />)}{user?.role === 'admin' && <NavItem item={adminItem} pathname={pathname} />}</div>
         </nav>
         <AppLink className="app-user-card" to="/app/settings">
           <span className="app-avatar">{initials}</span>
