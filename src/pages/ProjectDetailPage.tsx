@@ -145,7 +145,7 @@ export default function ProjectDetailPage({ id }: { id: string }) {
 
       {showContent && project.content && (
         <>
-          <section><div className="section-title-row"><div><span className="app-kicker">Erstellte Inhalte</span><h2>Fertig für deine Kunden</h2></div></div><div className="channel-list">{(['google', 'social', 'website'] as const).map(channel => <ChannelCard channel={channel} value={project.content?.[channel] || ''} onChange={value => changeContent(channel, value)} key={channel} />)}</div></section>
+          <section><div className="section-title-row"><div><span className="app-kicker">Erstellte Inhalte</span><h2>Fertig für deine Kunden</h2></div></div><div className="channel-list">{(['google', 'social', 'website'] as const).map(channel => <ChannelCard channel={channel} value={project.content?.[channel] || ''} onChange={value => changeContent(channel, value)} projectId={project.id} projectTitle={project.title} downloadImage={project.optimizedImage || project.originalImage} key={channel} />)}</div></section>
           <section className="visibility-panel"><div><span className="app-kicker">Sichtbar werden</span><h2>Content verwenden</h2><p>Kopiere deine Texte und lade die gewünschte Bildversion für Website, Google oder Social Media herunter.</p></div><div className="channel-pills"><span>Google</span><span>Website</span><span>Instagram</span><span>Facebook</span></div></section>
         </>
       )}

@@ -181,9 +181,12 @@
 .channel-card > p { overflow-wrap: anywhere; white-space: pre-line; margin: 22px 0; color: #364C61; line-height: 1.65; }
 .channel-card textarea { width: 100%; min-height: 170px; margin: 22px 0; padding: 14px; border: 1px solid #CBD5E1; border-radius: 12px; color: var(--text); resize: vertical; }
 .channel-edit-note { display: block; margin: -12px 0 20px; color: var(--muted); }
-.channel-actions { display: flex; gap: 10px; padding-top: 16px; border-top: 1px solid var(--border); }
-.channel-actions button { display: inline-flex; align-items: center; gap: 7px; min-height: 42px; padding: 9px 13px; border: 1px solid var(--border); border-radius: 10px; color: var(--navy); background: #fff; font-weight: 800; cursor: pointer; }
-.channel-actions button:hover { background: #F3F6F9; }
+.channel-actions { display: flex; gap: 10px; flex-wrap: wrap; padding-top: 16px; border-top: 1px solid var(--border); }
+.channel-actions button, .channel-actions a { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 42px; padding: 9px 13px; border: 1px solid var(--border); border-radius: 10px; color: var(--navy); background: #fff; font: inherit; font-weight: 800; cursor: pointer; }
+.channel-actions button:hover, .channel-actions a:hover { background: #F3F6F9; }
+.channel-actions button:disabled { cursor: not-allowed; opacity: .5; }
+.channel-actions .channel-share-action:not(:disabled) { border-color: #BFD4FF; color: var(--blue); background: #F3F7FF; }
+.channel-share-note { margin: 12px 0 0 !important; padding: 10px 12px; border-radius: 11px; color: var(--muted) !important; background: #F3F7FF; font-size: .82rem; line-height: 1.45 !important; }
 .visibility-panel { display: flex; align-items: center; justify-content: space-between; gap: 28px; padding: clamp(24px,4vw,36px); border: 1px solid #CDE8D8; border-radius: 22px; background: #F1FAF5; }
 .visibility-panel h2 { margin-bottom: 9px; }
 .visibility-panel p { max-width: 590px; margin: 0; color: var(--muted); }
@@ -351,7 +354,7 @@
   .channel-card header { align-items: flex-start; }
   .channel-ready { font-size: .68rem !important; }
   .channel-actions { display: grid; grid-template-columns: 1fr 1fr; }
-  .channel-actions button { justify-content: center; }
+  .channel-actions button, .channel-actions a { justify-content: center; }
   .visibility-panel { align-items: flex-start; flex-direction: column; }
   .channel-pills { justify-content: flex-start; }
   .wizard-result-actions { align-items: stretch; flex-direction: column; }
