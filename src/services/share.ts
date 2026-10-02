@@ -10,10 +10,16 @@ type ShareInput = {
   projectId: string;
   title?: string;
   text: string;
+  imageVersion?: string | null;
 };
 
-const preparedFiles = new Map<string, File | null>();
-const preparingFiles = new Map<string, Promise<File | null>>();
+type PreparedShareFile = {
+  version: string;
+  file: File | null;
+};
+
+const preparedFiles = new Map<string, PreparedShareFile>();
+const preparingFiles = new Map<string, { version: string; promise: Promise<File | null> }>();
 
 function extensionForMime(mimeType: string) {
   if (mimeType === 'image/png') return 'png';
@@ -46,46 +52,46 @@ async function fetchProjectShareFile(projectId: string): Promise<File | null> {
   );
 }
 
-export function invalidateProjectShareImage(projectId: string) {
-  preparedFiles.delete(projectId);
-  preparingFiles.delete(projectId);
-}
+export function prepareProjectShareImage(projectId: string, imageVersion = ''): Promise<File | null> {
+  const prepared = preparedFiles.get(projectId);
+  if (prepared?.version === imageVersion) return Promise.resolve(prepared.file);
 
-export function prepareProjectShareImage(projectId: string): Promise<File | null> {
-  if (preparedFiles.has(projectId)) {
-    return Promise.resolve(preparedFiles.get(projectId) ?? null);
-  }
-
-  const existing = preparingFiles.get(projectId);
-  if (existing) return existing;
+  const pending = preparingFiles.get(projectId);
+  if (pending?.version === imageVersion) return pending.promise;
 
   const request = fetchProjectShareFile(projectId)
     .catch(() => null)
     .then(file => {
-      preparedFiles.set(projectId, file);
-      preparingFiles.delete(projectId);
+      preparedFiles.set(projectId, { version: imageVersion, file });
+      const latest = preparingFiles.get(projectId);
+      if (latest?.version === imageVersion) preparingFiles.delete(projectId);
       return file;
     });
 
-  preparingFiles.set(projectId, request);
+  preparingFiles.set(projectId, { version: imageVersion, promise: request });
   return request;
 }
 
-export async function shareProjectContent({ projectId, title, text }: ShareInput): Promise<ShareOutcome> {
+export async function shareProjectContent({ projectId, title, text, imageVersion = '' }: ShareInput): Promise<ShareOutcome> {
   if (typeof navigator.share !== 'function') return 'unsupported';
 
-  const file = preparedFiles.get(projectId) ?? null;
+  const prepared = preparedFiles.get(projectId);
+  const file = prepared?.version === imageVersion ? prepared.file : null;
   const shareData: ShareData = {
     title: title?.trim() || undefined,
     text,
   };
 
-  if (
-    file &&
-    typeof navigator.canShare === 'function' &&
-    navigator.canShare({ files: [file] })
-  ) {
-    shareData.files = [file];
+  try {
+    if (
+      file &&
+      typeof navigator.canShare === 'function' &&
+      navigator.canShare({ files: [file] })
+    ) {
+      shareData.files = [file];
+    }
+  } catch {
+    // Some browsers expose canShare but reject file payload checks.
   }
 
   try {
