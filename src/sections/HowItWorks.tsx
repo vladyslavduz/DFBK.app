@@ -7,14 +7,14 @@ const steps = [
   },
   {
     number: '02',
-    title: 'Kurz beschreiben',
-    description: 'Schreibe oder sprich kurz ein, was du gemacht hast und was dir wichtig ist.',
+    title: 'Optional ergänzen',
+    description: 'DFBK erkennt deine Arbeit auf dem Foto. Ergänze nur Informationen, die nicht zuverlässig sichtbar sind – zum Beispiel Material, Marke, Ort oder eine Besonderheit.',
     image: '/visual/ablauf/02-kurz-beschreiben.webp'
   },
   {
     number: '03',
     title: 'DFBK.app versteht',
-    description: 'DFBK.app erkennt dein Foto, versteht deine Angaben und verbindet alles miteinander.',
+    description: 'DFBK.app analysiert dein Foto und berücksichtigt deine Zusatzinfo, falls du etwas ergänzt hast.',
     image: '/visual/ablauf/03-dfbk-versteht.webp'
   },
   {
