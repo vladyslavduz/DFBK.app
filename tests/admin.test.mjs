@@ -91,7 +91,9 @@ test('trial/business changes, truthful atomic audit, no-op and D1/API parity', a
   assert.deepEqual(reread.body.user,changed.body.user);
   assert.equal(db.prepare('SELECT COUNT(*) AS n FROM admin_audit_log').get().n,2);
   const ents=await handleEntitlements(request('/api/account/entitlements','user'),env,'/api/account/entitlements');
-  assert.equal((await ents.json()).plan,'trial');
+  const entitlementsBody=await ents.json();
+  assert.equal(entitlementsBody.plan,'trial');
+  assert.equal(entitlementsBody.features.share,true);
   db.close();
 });
 
