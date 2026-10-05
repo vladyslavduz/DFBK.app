@@ -19,7 +19,7 @@ after(async () => {
 const trial = {
   ok: true, plan: 'trial', displayName: 'Testzugang', status: 'active',
   voice: { enabled: true, maxWords: 10 },
-  features: { contentGeneration: true, share: false, businessIntegrations: false },
+  features: { contentGeneration: true, share: true, businessIntegrations: false },
   expiresAt: null,
 };
 const business = {
@@ -40,7 +40,7 @@ test('controlled Trial → admin grant Business → refresh → admin revoke →
   const first = await entitlementsService.getCurrent();
   assert.equal(first.plan, 'trial');
   assert.equal(first.voice.maxWords, 10);
-  assert.equal(first.features.share, false);
+  assert.equal(first.features.share, true);
   assert.equal(first.features.businessIntegrations, false);
 
   // Simulate the server-side admin grant; the frontend only re-reads GET.
@@ -56,7 +56,7 @@ test('controlled Trial → admin grant Business → refresh → admin revoke →
   const revoked = await entitlementsService.getCurrent();
   assert.equal(revoked.plan, 'trial');
   assert.equal(revoked.voice.maxWords, 10);
-  assert.equal(revoked.features.share, false);
+  assert.equal(revoked.features.share, true);
   assert.equal(revoked.features.businessIntegrations, false);
   assert.deepEqual(requests, Array(3).fill({ url: '/api/account/entitlements', credentials: 'same-origin' }));
 });

@@ -61,12 +61,12 @@ export function normalizeEntitlements(result: BackendEntitlementsResponse): Plan
   const voice = result?.voice;
   const features = result?.features;
 
-  // Only a complete, active backend Business response can grant Business UI.
+  // Only a complete, active backend response can grant plan features.
   if (
     (!trial && !business) || result.status !== 'active' ||
     result.displayName !== expectedName || voice?.enabled !== true ||
     voice.maxWords !== (business ? null : TRIAL_VOICE_MAX_WORDS) ||
-    features?.contentGeneration !== true || features.share !== business ||
+    features?.contentGeneration !== true || features.share !== true ||
     features.businessIntegrations !== business || result.expiresAt !== null
   ) throw new Error('INVALID_ENTITLEMENTS_RESPONSE');
 
@@ -80,7 +80,7 @@ export function normalizeEntitlements(result: BackendEntitlementsResponse): Plan
     },
     features: {
       contentGeneration: true,
-      share: business,
+      share: true,
       businessIntegrations: business,
     },
     expiresAt: null,
