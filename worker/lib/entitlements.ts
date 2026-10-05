@@ -58,7 +58,7 @@ export function buildEntitlements(plan: PlanCode): EntitlementsResponse {
     },
     features: {
       contentGeneration: true,
-      share: false,
+      share: true,
       businessIntegrations: false,
     },
     expiresAt: null,
