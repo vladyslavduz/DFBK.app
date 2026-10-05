@@ -1,3 +1,5 @@
+import { normalizeProjectTitle, TEMPORARY_PROJECT_TITLE, TRIAL_PROJECT_LIMIT, type TitleSource, type PhotoOptimizationState } from '../lib/project-management';
+import { readBoundedJson, requireSameOriginMutation } from '../lib/request-security';
 import type { Env } from '../lib/env';
 import { json, notImplemented } from '../lib/response';
 import { hashSessionToken } from '../lib/session';
@@ -32,6 +34,8 @@ type SessionRow = {
 type ProjectRow = {
   id: string;
   title: string;
+  title_source: TitleSource;
+  photo_optimization_state: PhotoOptimizationState;
   description: string | null;
   status: string;
   created_at: string;
@@ -157,6 +161,8 @@ function serializeProject(project: ProjectRow) {
   return {
     id: project.id,
     title: project.title,
+    titleSource: project.title_source,
+    photoOptimization: { state: project.photo_optimization_state },
     description: project.description,
     status: project.status,
     createdAt: project.created_at,
@@ -254,21 +260,8 @@ async function createProject(
     );
   }
 
-  if (typeof body.title !== 'string') {
-    return json(
-      { ok: false, error: 'PROJECT_TITLE_REQUIRED' },
-      400
-    );
-  }
-
-  const title = body.title.trim();
-
-  if (!title) {
-    return json(
-      { ok: false, error: 'PROJECT_TITLE_REQUIRED' },
-      400
-    );
-  }
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return json({ ok: false, error: 'INVALID_JSON' }, 400);
+  const title = TEMPORARY_PROJECT_TITLE;
 
   let description: string | null = null;
 
@@ -290,7 +283,7 @@ async function createProject(
   const projectId = crypto.randomUUID();
 
   try {
-    await env.DB
+    const created = await env.DB
       .prepare(
         `
         INSERT INTO projects (
@@ -299,16 +292,20 @@ async function createProject(
           title,
           description
         )
-        VALUES (?1, ?2, ?3, ?4)
+        SELECT ?1, ?2, ?3, ?4 FROM users u WHERE u.id = ?2
+          AND (u.plan = 'business' OR (SELECT COUNT(*) FROM projects WHERE user_id = ?2) < ?5)
         `
       )
       .bind(
         projectId,
         authenticatedUser,
         title,
-        description
+        description,
+        TRIAL_PROJECT_LIMIT
       )
       .run();
+
+    if (created.meta.changes === 0) return json({ ok: false, error: 'TRIAL_PROJECT_LIMIT_REACHED', limit: TRIAL_PROJECT_LIMIT }, 403);
 
     const project = await env.DB
       .prepare(
@@ -316,6 +313,8 @@ async function createProject(
         SELECT
           p.id,
           p.title,
+          p.title_source,
+          p.photo_optimization_state,
           p.description,
           p.status,
           p.created_at,
@@ -379,6 +378,8 @@ async function listProjects(
         SELECT
           p.id,
           p.title,
+          p.title_source,
+          p.photo_optimization_state,
           p.description,
           p.status,
           p.created_at,
@@ -439,39 +440,7 @@ async function getProjectById(
   }
 
   try {
-    const project = await env.DB
-      .prepare(
-        `
-        SELECT
-          p.id,
-          p.title,
-          p.description,
-          p.status,
-          p.created_at,
-          p.updated_at,
-          pm.id AS media_id,
-          pm.mime_type AS media_mime_type
-        FROM projects p
-        LEFT JOIN project_media pm
-          ON pm.id = (
-            SELECT pm2.id
-            FROM project_media pm2
-            WHERE pm2.project_id = p.id
-              AND pm2.role = 'original'
-              AND pm2.media_type = 'image'
-            ORDER BY pm2.created_at DESC, pm2.id DESC
-            LIMIT 1
-          )
-        WHERE p.id = ?1
-          AND p.user_id = ?2
-        LIMIT 1
-        `
-      )
-      .bind(
-        projectId,
-        authenticatedUser
-      )
-      .first<ProjectRow>();
+    const project = await getSerializedProject(env, authenticatedUser, projectId);
 
     if (!project) {
       return json(
@@ -483,7 +452,7 @@ async function getProjectById(
     return json(
       {
         ok: true,
-        project: serializeProject(project),
+        project,
       },
       200
     );
@@ -611,7 +580,7 @@ async function uploadProjectMedia(
   const project = await env.DB
     .prepare(
       `
-      SELECT id
+      SELECT id, photo_optimization_state
       FROM projects
       WHERE id = ?1
         AND user_id = ?2
@@ -619,13 +588,17 @@ async function uploadProjectMedia(
       `
     )
     .bind(projectId, authenticatedUser)
-    .first<ProjectOwnerRow>();
+    .first<{ id: string; photo_optimization_state: PhotoOptimizationState }>();
 
   if (!project) {
     return json(
       { ok: false, error: 'PROJECT_NOT_FOUND' },
       404
     );
+  }
+
+  if (project.photo_optimization_state !== 'available') {
+    return json({ ok: false, error: project.photo_optimization_state === 'completed' ? 'PHOTO_ALREADY_OPTIMIZED' : 'PHOTO_OPTIMIZATION_IN_PROGRESS' }, 409);
   }
 
   const contentType = request.headers.get('Content-Type') ?? '';
@@ -733,7 +706,7 @@ async function uploadProjectMedia(
   }
 
   try {
-    await env.DB
+    const inserted = await env.DB
       .prepare(
         `
         INSERT INTO project_media (
@@ -745,7 +718,9 @@ async function uploadProjectMedia(
           mime_type,
           size_bytes
         )
-        VALUES (?1, ?2, ?3, 'image', 'original', ?4, ?5)
+        SELECT ?1, ?2, ?3, 'image', 'original', ?4, ?5 FROM projects p
+        WHERE p.id = ?2 AND p.user_id = ?6 AND p.photo_optimization_state = 'available'
+          AND NOT EXISTS (SELECT 1 FROM project_media WHERE project_id = ?2 AND role = 'optimized')
         `
       )
       .bind(
@@ -753,9 +728,16 @@ async function uploadProjectMedia(
         projectId,
         storageKey,
         fileValue.type,
-        fileValue.size
+        fileValue.size,
+        authenticatedUser
       )
       .run();
+
+    if (inserted.meta.changes === 0) {
+      await env.MEDIA.delete(storageKey);
+      const current = await env.DB.prepare('SELECT photo_optimization_state FROM projects WHERE id = ?1').bind(projectId).first<{ photo_optimization_state: PhotoOptimizationState }>();
+      return json({ ok: false, error: current?.photo_optimization_state === 'completed' ? 'PHOTO_ALREADY_OPTIMIZED' : 'PHOTO_OPTIMIZATION_IN_PROGRESS' }, 409);
+    }
 
     const media = await env.DB
       .prepare(
@@ -879,6 +861,13 @@ export async function handleProjects(
     );
   }
 
+  const renameMatch = pathname.match(/^\/api\/projects\/([^/]+)$/);
+  if (renameMatch && request.method === 'PATCH') {
+    let projectId: string;
+    try { projectId = decodeURIComponent(renameMatch[1]).trim(); } catch { return json({ ok: false, error: 'INVALID_PROJECT_ID' }, 400); }
+    return renameProject(request, env, projectId);
+  }
+
   if (
     request.method === 'GET' &&
     pathname.startsWith('/api/projects/')
@@ -922,4 +911,74 @@ export async function handleProjects(
   }
 
   return null;
+}
+
+export async function getSerializedProject(env: Env, userId: string, projectId: string) {
+  const project = await env.DB
+      .prepare(
+        `
+        SELECT
+          p.id,
+          p.title,
+          p.title_source,
+          p.photo_optimization_state,
+          p.description,
+          p.status,
+          p.created_at,
+          p.updated_at,
+          pm.id AS media_id,
+          pm.mime_type AS media_mime_type
+        FROM projects p
+        LEFT JOIN project_media pm
+          ON pm.id = (
+            SELECT pm2.id
+            FROM project_media pm2
+            WHERE pm2.project_id = p.id
+              AND pm2.role = 'original'
+              AND pm2.media_type = 'image'
+            ORDER BY pm2.created_at DESC, pm2.id DESC
+            LIMIT 1
+          )
+        WHERE p.id = ?1
+          AND p.user_id = ?2
+        LIMIT 1
+        `
+      )
+      .bind(
+        projectId,
+        userId
+      )
+      .first<ProjectRow>();
+
+  return project ? serializeProject(project) : null;
+}
+
+async function renameProject(request: Request, env: Env, projectId: string): Promise<Response> {
+  const userId = await getAuthenticatedUserId(request, env);
+  if (userId instanceof Response) return userId;
+  const originError = requireSameOriginMutation(request);
+  if (originError) return originError;
+  const existing = await getSerializedProject(env, userId, projectId);
+  if (!existing) return json({ ok: false, error: 'PROJECT_NOT_FOUND' }, 404);
+  const body = await readBoundedJson(request);
+  if (body instanceof Response) return body;
+  if (Object.keys(body).length !== 1 || !Object.hasOwn(body, 'title')) return json({ ok: false, error: 'INVALID_PROJECT_UPDATE' }, 400);
+  const title = normalizeProjectTitle(body.title);
+  if (!title) return json({ ok: false, error: 'INVALID_PROJECT_TITLE' }, 400);
+  try {
+    const result = await env.DB.batch([
+      env.DB.prepare(`UPDATE projects SET title = ?1, title_source = 'manual', updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?2 AND user_id = ?3`).bind(title, projectId, userId),
+      env.DB.prepare(`SELECT p.id, p.title, p.title_source, p.photo_optimization_state, p.description,
+        p.status, p.created_at, p.updated_at,
+        (SELECT id FROM project_media WHERE project_id = p.id AND role = 'original' ORDER BY created_at DESC, id DESC LIMIT 1) AS media_id,
+        (SELECT mime_type FROM project_media WHERE project_id = p.id AND role = 'original' ORDER BY created_at DESC, id DESC LIMIT 1) AS media_mime_type
+        FROM projects p WHERE p.id = ?1 AND p.user_id = ?2`).bind(projectId, userId),
+    ]);
+    const actual = result[1].results[0] as ProjectRow | undefined;
+    return actual ? json({ ok: true, project: serializeProject(actual) }) : json({ ok: false, error: 'PROJECT_NOT_FOUND' }, 404);
+  } catch {
+    console.error('PROJECT_RENAME_FAILED');
+    return json({ ok: false, error: 'PROJECT_UPDATE_FAILED' }, 500);
+  }
 }

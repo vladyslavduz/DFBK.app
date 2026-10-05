@@ -159,7 +159,7 @@ export async function optimizeImage(
   formData.set(
     'image',
     new File(
-      [input.imageBytes],
+      [new Uint8Array(input.imageBytes).buffer],
       `original.${inputExtension(input.imageMimeType)}`,
       { type: input.imageMimeType }
     )
@@ -174,6 +174,7 @@ export async function optimizeImage(
         Authorization: `Bearer ${env.OPENAI_API_KEY}`,
       },
       body: formData,
+      signal: AbortSignal.timeout(180_000),
     });
   } catch (error) {
     console.error('IMAGE_OPTIMIZATION_NETWORK_ERROR', error);
