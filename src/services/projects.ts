@@ -3,12 +3,12 @@ import type {
   MediaAsset,
   Project,
   ProjectContentResponse,
+  ProjectGenerationResponse,
   ProjectMediaResponse,
   ProjectOptimizeResponse,
 } from '../types/models';
 
 type CreateProjectInput = {
-  title: string;
   description?: string;
 };
 
@@ -19,6 +19,10 @@ export function getProjectMediaUrl(projectId: string, mediaId: string) {
 export const projectService = {
   list: () => apiRequest<{ ok: true; projects: Project[] }>('/projects'),
   get: (id: string) => apiRequest<{ ok: true; project: Project }>(`/projects/${encodeURIComponent(id)}`),
+  rename: (id: string, title: string) => apiRequest<{ ok: true; project: Project }>(
+    `/projects/${encodeURIComponent(id)}`,
+    { method: 'PATCH', body: JSON.stringify({ title }) },
+  ),
   getProjectMedia: (projectId: string) => apiRequest<ProjectMediaResponse>(
     `/projects/${encodeURIComponent(projectId)}/media`,
   ),
@@ -29,7 +33,7 @@ export const projectService = {
   getProjectContent: (projectId: string) => apiRequest<ProjectContentResponse>(
     `/projects/${encodeURIComponent(projectId)}/content`,
   ),
-  generateProjectContent: (projectId: string) => apiRequest<ProjectContentResponse>(
+  generateProjectContent: (projectId: string) => apiRequest<ProjectGenerationResponse>(
     `/projects/${encodeURIComponent(projectId)}/generate`,
     { method: 'POST' },
   ),
