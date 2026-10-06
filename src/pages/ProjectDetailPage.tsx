@@ -4,6 +4,7 @@ import AppLink from '../components/AppLink';
 import ChannelCard from '../components/ChannelCard';
 import ProcessingState from '../components/ProcessingState';
 import ProjectImageViewer from '../components/ProjectImageViewer';
+import ProjectRename from '../components/ProjectRename';
 import {
   projectStatusLabel,
   useUserArea,
@@ -11,16 +12,18 @@ import {
   type ContentChannel,
 } from '../contexts/UserAreaContext';
 import { ApiError } from '../lib/api';
+import { formatProjectDate } from '../lib/project-date';
 import { projectGenerationErrorMessage } from '../lib/project-generation';
 import { getProjectMediaUrl } from '../services/projects';
-import type { ProjectMedia } from '../types/models';
+import type { ProjectMediaResponse } from '../types/models';
 
-function withMedia(project: AppProject, media: ProjectMedia): AppProject {
+function withMedia(project: AppProject, state: ProjectMediaResponse): AppProject {
   return {
     ...project,
-    media,
-    originalImage: media.original ? getProjectMediaUrl(project.id, media.original.id) : null,
-    optimizedImage: media.optimized ? getProjectMediaUrl(project.id, media.optimized.id) : null,
+    media: state.media,
+    photoOptimization: state.photoOptimization,
+    originalImage: state.media.original ? getProjectMediaUrl(project.id, state.media.original.id) : null,
+    optimizedImage: state.media.optimized ? getProjectMediaUrl(project.id, state.media.optimized.id) : null,
   };
 }
 
@@ -44,8 +47,8 @@ export default function ProjectDetailPage({ id }: { id: string }) {
       const content = await getProjectContent(id);
       let hydratedProject = { ...loadedProject, content };
       try {
-        const media = await getProjectMedia(id);
-        hydratedProject = withMedia(hydratedProject, media);
+        const mediaState = await getProjectMedia(id);
+        hydratedProject = withMedia(hydratedProject, mediaState);
       } catch {
         setMediaLoadError('Die Bildversionen konnten nicht vollständig geladen werden. Das verfügbare Original bleibt nutzbar.');
       }
@@ -68,10 +71,8 @@ export default function ProjectDetailPage({ id }: { id: string }) {
     setProject(current => current ? { ...current, status: 'processing' } : current);
 
     try {
-      await generateProjectContent(project.id);
-      const content = await getProjectContent(project.id);
-      if (!content) throw new ApiError(500, 'PROJECT_CONTENT_UNAVAILABLE');
-      setProject(current => current ? { ...current, status: 'ready', content } : current);
+      const generated = await generateProjectContent(project.id);
+      setProject(generated.project);
     } catch (requestError) {
       setGenerationError(projectGenerationErrorMessage(requestError));
       try {
@@ -84,7 +85,7 @@ export default function ProjectDetailPage({ id }: { id: string }) {
       generatingRef.current = false;
       setGenerating(false);
     }
-  }, [generateProjectContent, getProject, getProjectContent, project]);
+  }, [generateProjectContent, getProject, project]);
 
   function changeContent(channel: ContentChannel, value: string) {
     if (!project?.content) return;
@@ -93,23 +94,34 @@ export default function ProjectDetailPage({ id }: { id: string }) {
   }
 
   if (loading) return <div className="app-page"><div className="app-empty-card" aria-live="polite"><span className="processing-orb"><AppIcon name="spark" /></span><h1>Projekt wird geladen</h1></div></div>;
-  if (error === 'generic') return <div className="app-page"><div className="app-empty-card"><AppIcon name="folder" /><h1>Projekt konnte nicht geladen werden</h1><p>Etwas ist schiefgelaufen. Bitte versuche es erneut.</p><button className="button" type="button" onClick={() => void loadProject()}>Erneut versuchen</button></div></div>;
-  if (error === 'not-found' || !project) return <div className="app-page"><div className="app-empty-card"><AppIcon name="folder" /><h1>Projekt nicht gefunden</h1><p>Dieses Projekt ist nicht verfügbar oder wurde bereits entfernt.</p><AppLink className="button" to="/app/projects">Zu meinen Projekten</AppLink></div></div>;
+  if (error === 'generic') return <div className="app-page"><div className="app-empty-card"><AppIcon name="folder" /><h1>Projekt konnte nicht geladen werden</h1><p>Etwas ist schiefgelaufen. Bitte versuche es erneut.</p><button className="button" type="button" onClick={() => void loadProject()}>Erneut laden</button></div></div>;
+  if (error === 'not-found' || !project) return <div className="app-page"><div className="app-empty-card"><AppIcon name="folder" /><h1>Projekt nicht gefunden</h1><p>Dieses Projekt ist nicht verfügbar.</p><AppLink className="button" to="/app/projects">Zu meinen Projekten</AppLink></div></div>;
 
   const hasContent = Boolean(project.content);
-  const showContent = hasContent && ['ready', 'approved', 'published'].includes(project.status);
+  const showContent = hasContent && ['ready', 'finished'].includes(project.status);
 
   return (
     <div className="app-page">
       <AppLink className="back-link" to="/app/projects">← Meine Projekte</AppLink>
-      <header className="app-page-heading project-detail-heading"><div><span className={`project-status status-${project.status}`}><AppIcon name="check" />{projectStatusLabel(project.status)}</span><h1>{project.title}</h1><p>{new Intl.DateTimeFormat('de-DE', { dateStyle: 'long' }).format(new Date(project.createdAt))}</p></div></header>
+      <header className="app-page-heading project-detail-heading">
+        <div>
+          <span className={`project-status status-${project.status}`}>{projectStatusLabel(project.status)}</span>
+          <div className="project-detail-title-row">
+            <h1>{project.title}</h1>
+            <ProjectRename projectId={project.id} title={project.title} onRenamed={title => setProject(current => current ? { ...current, title, titleSource: 'manual' } : current)} compact />
+          </div>
+          <p>{formatProjectDate(project.createdAt, true)}</p>
+        </div>
+      </header>
 
       <ProjectImageViewer
         projectId={project.id}
         originalImage={project.originalImage}
         optimizedImage={project.optimizedImage}
+        photoOptimizationState={project.photoOptimization.state}
         mediaLoadError={mediaLoadError}
         onImagesChange={(originalImage, optimizedImage) => setProject(current => current ? { ...current, originalImage, optimizedImage } : current)}
+        onOptimizationStateChange={state => setProject(current => current ? { ...current, photoOptimization: { state } } : current)}
       />
 
       {project.description && <section className="project-description"><span className="app-kicker">Zusatzinfo</span><h2>Zu dieser Arbeit</h2><p>{project.description}</p></section>}
