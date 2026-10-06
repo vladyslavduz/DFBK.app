@@ -34,16 +34,22 @@ export default function DescriptionInput({ value, onChange, onBack, onContinue }
 
   useEffect(() => {
     requestAnimationFrame(() => continueButtonRef.current?.focus());
+  }, []);
+
+  useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape' && speechState !== 'recording') onBack();
     };
     window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [onBack, speechState]);
+
+  useEffect(() => {
     return () => {
-      window.removeEventListener('keydown', onKeyDown);
       recognitionRef.current?.abort();
       recognitionRef.current = null;
     };
-  }, [onBack, speechState]);
+  }, []);
 
   function stopSpeech() {
     recognitionRef.current?.stop();
