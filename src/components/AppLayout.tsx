@@ -12,6 +12,7 @@ const primaryItems = [
 ];
 
 const secondaryItems = [
+  { to: '/app/integrations', label: 'Integrationen', icon: 'share' as const },
   { to: '/app/settings', label: 'Einstellungen', icon: 'settings' as const },
   { to: '/app/billing', label: 'Tarif', icon: 'card' as const },
 ];
