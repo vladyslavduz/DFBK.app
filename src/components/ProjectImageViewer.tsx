@@ -29,6 +29,7 @@ export default function ProjectImageViewer({
   const [imageMode, setImageMode] = useState<ImageMode>(optimizedImage ? 'optimized' : 'original');
   const [retrying, setRetrying] = useState(false);
   const [optimizationError, setOptimizationError] = useState('');
+  const [pollingExhausted, setPollingExhausted] = useState(false);
   const pollCount = useRef(0);
 
   useEffect(() => {
@@ -38,13 +39,17 @@ export default function ProjectImageViewer({
   useEffect(() => {
     if (photoOptimizationState !== 'processing') {
       pollCount.current = 0;
+      setPollingExhausted(false);
       return;
     }
     let active = true;
     let timeoutId = 0;
 
     async function poll() {
-      if (!active || pollCount.current >= 6) return;
+      if (!active || pollCount.current >= 6) {
+        if (active) setPollingExhausted(true);
+        return;
+      }
       try {
         const state = await getProjectMedia(projectId);
         if (!active) return;
@@ -68,6 +73,8 @@ export default function ProjectImageViewer({
       if (active && pollCount.current < 6) {
         const delay = Math.min(2000 + pollCount.current * 1000, 6000);
         timeoutId = window.setTimeout(() => void poll(), delay);
+      } else if (active) {
+        setPollingExhausted(true);
       }
     }
 
@@ -77,6 +84,26 @@ export default function ProjectImageViewer({
       window.clearTimeout(timeoutId);
     };
   }, [getProjectMedia, onImagesChange, onOptimizationStateChange, originalImage, photoOptimizationState, projectId]);
+
+  async function refreshOptimizationStatus() {
+    try {
+      const state = await getProjectMedia(projectId);
+      const nextOriginal = state.media.original ? getProjectMediaUrl(projectId, state.media.original.id) : originalImage;
+      const nextOptimized = state.media.optimized ? getProjectMediaUrl(projectId, state.media.optimized.id) : null;
+      onImagesChange?.(nextOriginal, nextOptimized);
+      onOptimizationStateChange?.(state.photoOptimization.state);
+      setPollingExhausted(false);
+      pollCount.current = 0;
+      if (state.photoOptimization.state === 'completed') {
+        setOptimizationError('');
+        setImageMode(nextOptimized ? 'optimized' : 'original');
+      } else if (state.photoOptimization.state === 'available') {
+        setOptimizationError('Optimierung konnte nicht abgeschlossen werden. Erneut versuchen.');
+      }
+    } catch {
+      setOptimizationError('Der Status der Fotooptimierung konnte nicht geladen werden.');
+    }
+  }
 
   async function retryOptimization() {
     if (retrying || !originalImage || photoOptimizationState !== 'available') return;
@@ -147,7 +174,9 @@ export default function ProjectImageViewer({
         <a className="button button-secondary" href={displayedImage} download={showingOptimized ? 'dfbk-projektbild-optimiert' : 'dfbk-projektbild-original'}><AppIcon name="download" />{showingOptimized ? 'Optimiertes Bild herunterladen' : 'Original herunterladen'}</a>
         {completed
           ? <span className="project-status status-ready"><AppIcon name="check" />Foto optimiert</span>
-          : <button className="button button-secondary" type="button" disabled={processing} onClick={() => void retryOptimization()}>{processing ? 'Foto wird optimiert…' : optimizationError ? 'Erneut versuchen' : 'Foto optimieren'}</button>}
+          : photoOptimizationState === 'processing' && pollingExhausted
+            ? <button className="button button-secondary" type="button" onClick={() => void refreshOptimizationStatus()}>Status aktualisieren</button>
+            : <button className="button button-secondary" type="button" disabled={processing} onClick={() => void retryOptimization()}>{processing ? 'Foto wird optimiert…' : optimizationError ? 'Erneut versuchen' : 'Foto optimieren'}</button>}
       </div>
     </section>
   );
