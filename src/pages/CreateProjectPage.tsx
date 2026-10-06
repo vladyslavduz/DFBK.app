@@ -66,26 +66,35 @@ export default function CreateProjectPage() {
 
       if (!photoFile) throw new ApiError(400, 'PROJECT_IMAGE_REQUIRED');
       if (!mediaUploadedRef.current) {
-        const uploaded = await uploadProjectMedia(createdProject.id, photoFile);
-        const uploadedOriginal = getProjectMediaUrl(uploaded.projectId, uploaded.id);
-        createdProject = {
-          ...createdProject,
-          media: { original: { id: uploaded.id, mimeType: uploaded.mimeType }, optimized: null },
-          originalImage: uploadedOriginal,
-          optimizedImage: null,
-        };
+        let uploadedOriginal = '';
+        try {
+          const uploaded = await uploadProjectMedia(createdProject.id, photoFile);
+          uploadedOriginal = getProjectMediaUrl(uploaded.projectId, uploaded.id);
+          createdProject = {
+            ...createdProject,
+            media: { original: { id: uploaded.id, mimeType: uploaded.mimeType }, optimized: null },
+            originalImage: uploadedOriginal,
+            optimizedImage: null,
+          };
+        } catch (uploadError) {
+          if (!(uploadError instanceof ApiError) || uploadError.status !== 409 || !['PHOTO_OPTIMIZATION_IN_PROGRESS', 'PHOTO_ALREADY_OPTIMIZED'].includes(uploadError.code)) {
+            throw uploadError;
+          }
+        }
 
         try {
           const mediaState = await getProjectMedia(createdProject.id);
+          if (!mediaState.media.original) throw new ApiError(500, 'PROJECT_IMAGE_UNAVAILABLE');
           createdProject = {
             ...createdProject,
             media: mediaState.media,
             photoOptimization: mediaState.photoOptimization,
-            originalImage: mediaState.media.original ? getProjectMediaUrl(createdProject.id, mediaState.media.original.id) : uploadedOriginal,
+            originalImage: getProjectMediaUrl(createdProject.id, mediaState.media.original.id),
             optimizedImage: mediaState.media.optimized ? getProjectMediaUrl(createdProject.id, mediaState.media.optimized.id) : null,
           };
-        } catch {
-          setMediaLoadError('Die von DFBK.app optimierte Bildversion konnte noch nicht geladen werden. Das Original bleibt verfügbar.');
+        } catch (mediaError) {
+          if (!uploadedOriginal) throw mediaError;
+          setMediaLoadError('Die Bildversionen konnten noch nicht vollständig geladen werden. Das Original bleibt verfügbar.');
         }
 
         createdProjectRef.current = createdProject;
