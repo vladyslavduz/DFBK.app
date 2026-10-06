@@ -32,6 +32,7 @@ export default function CreateProjectPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [mediaLoadError, setMediaLoadError] = useState('');
+  const [trialLimitReached, setTrialLimitReached] = useState(false);
   const submittingRef = useRef(false);
   const createdProjectRef = useRef<AppProject | null>(null);
   const mediaUploadedRef = useRef(false);
@@ -75,12 +76,13 @@ export default function CreateProjectPage() {
         };
 
         try {
-          const media = await getProjectMedia(createdProject.id);
+          const mediaState = await getProjectMedia(createdProject.id);
           createdProject = {
             ...createdProject,
-            media,
-            originalImage: media.original ? getProjectMediaUrl(createdProject.id, media.original.id) : uploadedOriginal,
-            optimizedImage: media.optimized ? getProjectMediaUrl(createdProject.id, media.optimized.id) : null,
+            media: mediaState.media,
+            photoOptimization: mediaState.photoOptimization,
+            originalImage: mediaState.media.original ? getProjectMediaUrl(createdProject.id, mediaState.media.original.id) : uploadedOriginal,
+            optimizedImage: mediaState.media.optimized ? getProjectMediaUrl(createdProject.id, mediaState.media.optimized.id) : null,
           };
         } catch {
           setMediaLoadError('Die von DFBK.app optimierte Bildversion konnte noch nicht geladen werden. Das Original bleibt verfügbar.');
@@ -99,22 +101,45 @@ export default function CreateProjectPage() {
 
       if (!generationCompletedRef.current) {
         generationAttemptedRef.current = true;
-        await generateProjectContent(createdProject.id);
+        const generated = await generateProjectContent(createdProject.id);
+        createdProject = generated.project;
+        createdProjectRef.current = createdProject;
         generationCompletedRef.current = true;
       }
 
-      const content = await getProjectContent(createdProject.id);
+      const content = createdProject.content || await getProjectContent(createdProject.id);
       if (!content) throw new ApiError(500, 'PROJECT_CONTENT_UNAVAILABLE');
 
-      setProject({ ...createdProject, status: 'ready', content });
+      setProject({ ...createdProject, content });
       setStep(4);
     } catch (error) {
-      setSubmitError(projectFlowError(error));
+      if (error instanceof ApiError && error.code === 'TRIAL_PROJECT_LIMIT_REACHED') {
+        setTrialLimitReached(true);
+        setSubmitError('');
+      } else {
+        setSubmitError(projectFlowError(error));
+      }
     } finally {
       submittingRef.current = false;
       setSubmitting(false);
     }
   }, [createProject, description, generateProjectContent, getProject, getProjectContent, getProjectMedia, photoFile, uploadProjectMedia]);
+
+  if (trialLimitReached) {
+    return (
+      <div className="app-page app-wizard-page">
+        <section className="trial-limit-card">
+          <span className="app-kicker">Testphase</span>
+          <h1>Deine Testphase ist vollständig genutzt.</h1>
+          <p>Du hast DFBK.app mit 5 eigenen Projekten ausprobiert.</p>
+          <div className="trial-limit-actions">
+            <AppLink className="button" to="/app/billing">Mit Business weitermachen</AppLink>
+            <AppLink className="button button-secondary" to="/app/projects">Meine Projekte</AppLink>
+          </div>
+        </section>
+      </div>
+    );
+  }
 
   return (
     <div className="app-page app-wizard-page">
@@ -131,7 +156,9 @@ export default function CreateProjectPage() {
             originalImage={project.originalImage}
             optimizedImage={project.optimizedImage}
             mediaLoadError={mediaLoadError}
+            photoOptimizationState={project.photoOptimization.state}
             onImagesChange={(originalImage, optimizedImage) => setProject(current => current ? { ...current, originalImage, optimizedImage } : current)}
+            onOptimizationStateChange={state => setProject(current => current ? { ...current, photoOptimization: { state } } : current)}
           />
 
           <div className="result-photo-summary"><div><span className={`project-status status-${project.status}`}><AppIcon name="check" />{projectStatusLabel(project.status)}</span><h2>{project.title}</h2>{project.description && <p>{project.description}</p>}</div></div>
