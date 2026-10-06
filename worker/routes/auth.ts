@@ -74,6 +74,23 @@ function isValidEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
+function isJsonObject(value: unknown): value is Record<string, unknown> {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    !Array.isArray(value)
+  );
+}
+
+function hasValidCredentialTypes(
+  body: Record<string, unknown>
+): boolean {
+  return (
+    (body.email === undefined || typeof body.email === 'string') &&
+    (body.password === undefined || typeof body.password === 'string')
+  );
+}
+
 function getCookie(
   request: Request,
   name: string
@@ -276,10 +293,10 @@ async function register(
   request: Request,
   env: Env
 ): Promise<Response> {
-  let body: RegisterBody;
+  let body: unknown;
 
   try {
-    body = await request.json<RegisterBody>();
+    body = await request.json();
   } catch {
     return json(
       { ok: false, error: 'INVALID_JSON' },
@@ -287,8 +304,16 @@ async function register(
     );
   }
 
-  const email = normalizeEmail(body.email ?? '');
-  const password = body.password ?? '';
+  if (!isJsonObject(body) || !hasValidCredentialTypes(body)) {
+    return json(
+      { ok: false, error: 'INVALID_REQUEST_BODY' },
+      400
+    );
+  }
+
+  const registerBody = body as RegisterBody;
+  const email = normalizeEmail(registerBody.email ?? '');
+  const password = registerBody.password ?? '';
 
   if (!email || !password) {
     return json(
@@ -602,10 +627,10 @@ async function login(
   request: Request,
   env: Env
 ): Promise<Response> {
-  let body: LoginBody;
+  let body: unknown;
 
   try {
-    body = await request.json<LoginBody>();
+    body = await request.json();
   } catch {
     return json(
       { ok: false, error: 'INVALID_JSON' },
@@ -613,8 +638,16 @@ async function login(
     );
   }
 
-  const email = normalizeEmail(body.email ?? '');
-  const password = body.password ?? '';
+  if (!isJsonObject(body) || !hasValidCredentialTypes(body)) {
+    return json(
+      { ok: false, error: 'INVALID_REQUEST_BODY' },
+      400
+    );
+  }
+
+  const loginBody = body as LoginBody;
+  const email = normalizeEmail(loginBody.email ?? '');
+  const password = loginBody.password ?? '';
 
   if (!email || !password) {
     return json(
