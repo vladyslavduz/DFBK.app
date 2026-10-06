@@ -192,3 +192,13 @@ test('bounded OAuth starts and new publication admissions; status read is owner-
   assert.equal((await handleSocialPublish(request(path+'?requestId='+last.requestId),env,path)).status,200);
   assert.equal((await handleSocialPublish(request(path+'?requestId='+last.requestId,'GET',undefined,'admin'),env,path)).status,404);db.close();
 });
+test('preview mediaId pins confirmed image even if optimized appears; foreign media denied',async()=>{
+  const {db,env}=await setup();await connect(db,env);
+  db.exec("INSERT INTO project_media(id,project_id,storage_key,role,mime_type,size_bytes) VALUES('optimized','p','optimized-key','optimized','image/jpeg',17),('foreign-media','foreign','other','original','image/jpeg',17)");
+  let calls=0;
+  await mocked(async()=>{calls++;return Response.json({id:'777'});},async()=>{
+    const result=await (await post(env,{providers:['facebook'],caption:'Caption',useOptimizedImage:true,mediaId:'original'})).json();
+    assert.equal(result.results[0].mediaId,'original');assert.equal(result.results[0].mediaSource,'original');
+    assert.equal((await post(env,{providers:['facebook'],caption:'Caption',mediaId:'foreign-media'},'preview-idempotency-0002')).status,400);
+  });assert.equal(calls,1);db.close();
+});

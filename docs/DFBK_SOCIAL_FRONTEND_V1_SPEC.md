@@ -27,11 +27,11 @@ POST `/api/social/:provider/disconnect` `{}` → same. JSON via existing same-or
 
 POST `/api/projects/:id/publish`
 header `Idempotency-Key: crypto.randomUUID()` (16–128 ASCII A-Za-z0-9_-)
-body `{providers:["instagram","facebook"],caption:"...",useOptimizedImage:true}`.
-No userId/token/mediaURL/connection spoofing. useOptimizedImage=true defaults to optimized if present, else original. false deliberately uses original. Preview must show exactly chosen source. Caption trim; max IG2200 Unicode codepoints, FB conservative product cap5000; multi-select uses strictest. Backend currently supports IG JPEG≤8MiB/aspect0.8–1.91, FB JPEG/PNG≤10MiB; unsupported image shows clear error, no silent conversion/optimization.
+body `{providers:["instagram","facebook"],caption:"...",useOptimizedImage:true,mediaId:"selected-media-id"}`.
+No userId/token/mediaURL/connection spoofing. useOptimizedImage=true defaults to optimized if present, else original. false deliberately uses original. Send the exact mediaId from private media state used in preview; server checks its project ownership. This prevents a newly completed optimized image from replacing the original image the user confirmed. Preview must show exactly chosen source. Caption trim; max IG2200 Unicode codepoints, FB conservative product cap5000; multi-select uses strictest. Backend currently supports IG JPEG≤8MiB/aspect0.8–1.91, FB JPEG/PNG≤10MiB; unsupported image shows clear error, no silent conversion/optimization.
 
 Result200 terminal or202 +Retry-After10:
-`{ok:true,requestId,results:[{jobId,provider,status,mediaSource,externalPostId,url,error,retryAllowed}]}`.
+`{ok:true,requestId,results:[{jobId,provider,status,mediaId,mediaSource,externalPostId,url,error,retryAllowed}]}`.
 status pending/processing/published/failed. One provider failure is an individual result, not failure of all. Invalid request/media/config/ownership can be request-wide `{ok:false,error}`.
 
 GET `/api/projects/:id/publications?requestId=...` gives saved results without publishing. Owner only. No full-history endpoint yet; don't build analytics/history dashboard. UI may keep current requestId to refresh statuses. Connection/account state always refetched server-side.

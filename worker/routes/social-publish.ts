@@ -7,7 +7,7 @@ import { metaAdapters } from '../lib/social-meta';
 import type { Connection } from './social';
 type Job = {id:string;request_id:string;user_id:string;project_id:string;provider:'instagram'|'facebook';connection_id:string|null;status:string;caption:string;media_id:string;media_source:string;external_container_id:string|null;external_publish_started_at:string|null;external_post_id:string|null;external_post_url:string|null;error_code:string|null};
 type Media = {id:string;storage_key:string;mime_type:string;size_bytes:number;role:string};
-function publicJob(job: Job) {return {jobId:job.id,provider:job.provider,status:job.status,mediaSource:job.media_source,externalPostId:job.external_post_id,url:job.external_post_url,error:job.error_code,
+function publicJob(job: Job) {return {jobId:job.id,provider:job.provider,status:job.status,mediaId:job.media_id,mediaSource:job.media_source,externalPostId:job.external_post_id,url:job.external_post_url,error:job.error_code,
   retryAllowed:job.status==='pending'&&!job.external_publish_started_at};}
 function jpegDimensions(bytes: Uint8Array): {width:number;height:number}|null {
   if(bytes[0]!==255||bytes[1]!==216)return null;
@@ -100,7 +100,7 @@ export async function handleSocialPublish(request: Request, env: Env, pathname: 
     const guard=requireSameOriginMutation(request);if(guard)return guard;
     if(new URL(request.url).origin!==env.SOCIAL_PUBLIC_ORIGIN)return json({ok:false,error:'INVALID_ORIGIN'},403);
     const body=await readBoundedJson(request,24*1024);if(body instanceof Response)return body;
-    if(Object.keys(body).some(key=>!['providers','caption','useOptimizedImage'].includes(key)))return json({ok:false,error:'INVALID_SOCIAL_REQUEST'},400);
+    if(Object.keys(body).some(key=>!['providers','caption','useOptimizedImage','mediaId'].includes(key)))return json({ok:false,error:'INVALID_SOCIAL_REQUEST'},400);
     if(!Array.isArray(body.providers)||!body.providers.length||body.providers.length>4||body.providers.some(p=>!PROVIDERS.includes(p)))return json({ok:false,error:'INVALID_SOCIAL_PROVIDER'},400);
     const providers=[...new Set(body.providers as string[])].sort();
     if(providers.length!==body.providers.length)return json({ok:false,error:'INVALID_SOCIAL_PROVIDER'},400);
@@ -110,14 +110,17 @@ export async function handleSocialPublish(request: Request, env: Env, pathname: 
     if(!caption||Array.from(caption).length>(providers.includes('instagram')?2200:5000))return json({ok:false,error:'INVALID_CAPTION'},400);
     if(body.useOptimizedImage!==undefined&&typeof body.useOptimizedImage!=='boolean')return json({ok:false,error:'INVALID_SOCIAL_REQUEST'},400);
     const optimized=body.useOptimizedImage!==false;
+    if(body.mediaId!==undefined&&(typeof body.mediaId!=='string'||!/^[A-Za-z0-9_-]{1,128}$/.test(body.mediaId)))return json({ok:false,error:'INVALID_SOCIAL_REQUEST'},400);
+    const mediaId=typeof body.mediaId==='string'?body.mediaId:null;
     const key=request.headers.get('Idempotency-Key')??'';
     if(!/^[A-Za-z0-9_-]{16,128}$/.test(key))return json({ok:false,error:'INVALID_IDEMPOTENCY_KEY'},400);
-    const payloadHash=await digest(JSON.stringify({projectId,providers,caption,optimized}));
+    const payloadHash=await digest(JSON.stringify({projectId,providers,caption,optimized,mediaId}));
     let saved=await env.DB.prepare(`SELECT id,payload_hash FROM publication_requests WHERE user_id=?1 AND idempotency_key=?2`).bind(user.id,key).first<{id:string;payload_hash:string}>();
     if(saved&&saved.payload_hash!==payloadHash)return json({ok:false,error:'IDEMPOTENCY_CONFLICT'},409);
     if(!saved) {
       const media=await env.DB.prepare(`SELECT id,storage_key,mime_type,size_bytes,role FROM project_media WHERE project_id=?1 AND media_type='image' AND role IN ('original','optimized')
-        AND (?2=1 OR role='original') ORDER BY CASE WHEN role='optimized' THEN 0 ELSE 1 END,created_at DESC,id DESC LIMIT 1`).bind(projectId,optimized?1:0).first<Media>();
+        AND (?2=1 OR role='original') AND (?3 IS NULL OR id=?3)
+        ORDER BY CASE WHEN role='optimized' THEN 0 ELSE 1 END,created_at DESC,id DESC LIMIT 1`).bind(projectId,optimized?1:0,mediaId).first<Media>();
       if(!media)return json({ok:false,error:'SOCIAL_MEDIA_NOT_AVAILABLE'},400);
       await checkMedia(env,media,providers.includes('instagram'));
       const states=[];
