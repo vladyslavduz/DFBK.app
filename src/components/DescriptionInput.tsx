@@ -26,17 +26,24 @@ export default function DescriptionInput({ value, onChange, onBack, onContinue }
   const baseTextRef = useRef('');
   const finalTranscriptRef = useRef('');
   const valueRef = useRef(value);
+  const continueButtonRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
     valueRef.current = value;
   }, [value]);
 
   useEffect(() => {
+    requestAnimationFrame(() => continueButtonRef.current?.focus());
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && speechState !== 'recording') onBack();
+    };
+    window.addEventListener('keydown', onKeyDown);
     return () => {
+      window.removeEventListener('keydown', onKeyDown);
       recognitionRef.current?.abort();
       recognitionRef.current = null;
     };
-  }, []);
+  }, [onBack, speechState]);
 
   function stopSpeech() {
     recognitionRef.current?.stop();
@@ -62,7 +69,7 @@ export default function DescriptionInput({ value, onChange, onBack, onContinue }
     baseTextRef.current = valueRef.current.trimEnd();
     finalTranscriptRef.current = '';
     setInterimTranscript('');
-    setSpeechMessage('Sprich jetzt – der Text erscheint direkt oben im Feld.');
+    setSpeechMessage('Sprich jetzt – dein Zusatz wird direkt übernommen.');
     setSpeechState('recording');
     recognition.onstart = () => setSpeechState('recording');
     recognition.onresult = event => {
@@ -76,7 +83,7 @@ export default function DescriptionInput({ value, onChange, onBack, onContinue }
       const rawFinalText = finalTranscriptRef.current.trim();
       const finalText = plan.voice.maxWords ? rawFinalText.split(/\s+/).slice(0, plan.voice.maxWords).join(' ') : rawFinalText;
       const baseText = baseTextRef.current;
-      onChange([baseText, finalText].filter(Boolean).join(`${baseText ? '\n' : ''}`));
+      onChange([baseText, finalText].filter(Boolean).join(baseText ? '\n' : ''));
       setInterimTranscript(interim.trim());
       if (plan.voice.maxWords && rawFinalText.split(/\s+/).filter(Boolean).length >= plan.voice.maxWords) {
         setSpeechMessage(`${plan.displayName}: maximal ${plan.voice.maxWords} Wörter pro Spracheingabe.`);
@@ -101,6 +108,7 @@ export default function DescriptionInput({ value, onChange, onBack, onContinue }
       setSpeechState(current => current === 'recording' ? 'idle' : current);
     };
     recognitionRef.current = recognition;
+
     try {
       recognition.start();
     } catch {
@@ -111,36 +119,71 @@ export default function DescriptionInput({ value, onChange, onBack, onContinue }
   }
 
   const voiceAvailable = plan.voice.enabled;
-  const speechLabel = speechState === 'recording' ? 'Aufnahme beenden' : 'Spracheingabe starten';
   const hasAdditionalInfo = Boolean(value.trim());
+  const speechLabel = speechState === 'recording' ? 'Aufnahme beenden' : 'Spracheingabe starten';
 
   return (
-    <section className="wizard-card description-step">
-      <div className="wizard-heading">
-        <span className="app-kicker">Schritt 2 · Optional</span>
-        <h1>Möchtest du etwas ergänzen?</h1>
-        <p>Optional – füge nur Informationen hinzu, die auf dem Foto nicht erkennbar sind.</p>
-      </div>
-      <div className="description-field">
-        <label htmlFor="project-description">Zusatzinfo <small>(optional)</small></label>
-        <div className="description-input-shell">
-          <textarea id="project-description" value={value} onChange={event => onChange(event.target.value)} placeholder="z. B. Material, Marke, Ort oder Besonderheit" autoFocus />
-          <div className="description-toolbar">
-            <div className="description-voice-copy" title={voiceAvailable && plan.voice.maxWords ? `Im ${plan.displayName} sind bis zu ${plan.voice.maxWords} Wörter pro Spracheingabe möglich.` : undefined}>
-              <span>Material · Marke · Ort · Besonderheit</span>
-              {voiceAvailable ? <span className="description-voice-hint">{plan.voice.maxWords ? `Testzugang: maximal ${plan.voice.maxWords} Wörter pro Spracheingabe.` : 'Schreiben oder sprechen – nur wenn du etwas ergänzen möchtest.'}</span> : <span className="description-voice-hint">Spracheingabe ab einem passenden Tarif verfügbar.</span>}
-            </div>
-            <div className="description-voice-actions">
-              <label className="speech-language"><span>Sprache</span><select value={speechLanguage} onChange={event => setSpeechLanguage(event.target.value as (typeof SPEECH_LANGUAGES)[number]['value'])} disabled={!voiceAvailable || speechState === 'recording'}>{SPEECH_LANGUAGES.map(language => <option value={language.value} key={language.value}>{language.label}</option>)}</select></label>
-              <button className={`voice-button${speechState === 'recording' ? ' is-recording' : ''}`} type="button" onClick={speechState === 'recording' ? stopSpeech : startSpeech} disabled={!voiceAvailable} aria-pressed={speechState === 'recording'} title={voiceAvailable ? speechLabel : 'Spracheingabe ist in deinem aktuellen Tarif nicht verfügbar'}><AppIcon name="mic" /><span>{speechState === 'recording' ? 'Beenden' : 'Sprechen'}</span></button>
-            </div>
+    <div className="optional-context-backdrop" role="presentation">
+      <section className="optional-context-modal" role="dialog" aria-modal="true" aria-labelledby="optional-context-title" aria-describedby="optional-context-copy">
+        <div className="optional-context-heading">
+          <div>
+            <span className="app-kicker">Optional</span>
+            <h1 id="optional-context-title">Möchtest du noch etwas ergänzen?</h1>
+            <p id="optional-context-copy">DFBK.app erkennt deine Arbeit auf dem Foto. Ergänze nur, was nicht sichtbar ist.</p>
           </div>
+          <button className="optional-context-close" type="button" onClick={onBack} aria-label="Zurück zum Foto">×</button>
         </div>
-      </div>
-      {!voiceAvailable && <p className="voice-access-note" role="status">Spracheingabe ist im {plan.displayName} noch nicht freigeschaltet.</p>}
-      {speechState === 'unsupported' && <p className="inline-notice" role="status">{speechMessage}</p>}
-      {(speechState === 'recording' || speechState === 'error') && <p className="inline-notice" role="status">{speechMessage}{interimTranscript ? ` ${interimTranscript}` : ''}</p>}
-      <div className="wizard-footer"><button className="text-button" type="button" onClick={onBack}>Zurück</button><button className="button" type="button" onClick={onContinue}>{hasAdditionalInfo ? 'Weiter' : 'Ohne Zusatzinfo weiter'}<AppIcon name="arrow" /></button></div>
-    </section>
+
+        <div className="optional-context-field">
+          <label htmlFor="project-description">Zusatzinfo</label>
+          <textarea
+            id="project-description"
+            value={value}
+            onChange={event => onChange(event.target.value)}
+            placeholder="z. B. Material, Marke, Ort oder Besonderheit"
+            rows={3}
+          />
+        </div>
+
+        <div className="optional-context-tools">
+          <label className="speech-language">
+            <span>Sprache</span>
+            <select
+              value={speechLanguage}
+              onChange={event => setSpeechLanguage(event.target.value as (typeof SPEECH_LANGUAGES)[number]['value'])}
+              disabled={!voiceAvailable || speechState === 'recording'}
+            >
+              {SPEECH_LANGUAGES.map(language => <option value={language.value} key={language.value}>{language.label}</option>)}
+            </select>
+          </label>
+
+          <button
+            className={`voice-button${speechState === 'recording' ? ' is-recording' : ''}`}
+            type="button"
+            onClick={speechState === 'recording' ? stopSpeech : startSpeech}
+            disabled={!voiceAvailable}
+            aria-pressed={speechState === 'recording'}
+            title={voiceAvailable ? speechLabel : 'Spracheingabe ist in deinem aktuellen Tarif nicht verfügbar'}
+          >
+            <AppIcon name="mic" />
+            <span>{speechState === 'recording' ? 'Beenden' : 'Sprechen'}</span>
+          </button>
+        </div>
+
+        {voiceAvailable && plan.voice.maxWords && <p className="optional-context-hint">{plan.displayName}: maximal {plan.voice.maxWords} Wörter pro Spracheingabe.</p>}
+        {!voiceAvailable && <p className="optional-context-hint">Spracheingabe ist im {plan.displayName} noch nicht verfügbar.</p>}
+        {(speechState === 'unsupported' || speechState === 'recording' || speechState === 'error') && (
+          <p className="inline-notice" role="status">{speechMessage}{interimTranscript ? ` ${interimTranscript}` : ''}</p>
+        )}
+
+        <div className="optional-context-actions">
+          <button className="text-button" type="button" onClick={onBack}>Zurück</button>
+          <button ref={continueButtonRef} className="button" type="button" onClick={onContinue}>
+            {hasAdditionalInfo ? 'Weiter' : 'Ohne Zusatzinfo weiter'}
+            <AppIcon name="arrow" />
+          </button>
+        </div>
+      </section>
+    </div>
   );
 }
