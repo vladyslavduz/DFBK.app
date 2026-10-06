@@ -39,6 +39,8 @@ const malformedCases = [
   ['malformed JSON', '{'],
   ['null', 'null'],
   ['array', '[]'],
+  ['root number', '42'],
+  ['root string', '"credentials"'],
   ['email object', JSON.stringify({ email: {}, password: 'TestPassword123!' })],
   ['email number', JSON.stringify({ email: 123, password: 'TestPassword123!' })],
   ['password object', JSON.stringify({ email: 'test@example.com', password: {} })],
