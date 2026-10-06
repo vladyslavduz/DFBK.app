@@ -3,7 +3,16 @@ import { useAuth } from './AuthContext';
 import { ApiError } from '../lib/api';
 import { getProjectMediaUrl, projectService } from '../services/projects';
 import { entitlementsService, fallbackTrialEntitlements, type PlanEntitlements } from '../services/entitlements';
-import type { MediaAsset, Project, ProjectGeneratedContent, ProjectMedia, ProjectStatus } from '../types/models';
+import type {
+  MediaAsset,
+  Project,
+  ProjectGeneratedContent,
+  ProjectMedia,
+  ProjectMediaResponse,
+  ProjectPhotoOptimization,
+  ProjectStatus,
+  ProjectTitleSource,
+} from '../types/models';
 
 export type ContentChannel = 'google' | 'social' | 'website';
 export type ProjectContent = Record<ContentChannel, string>;
@@ -11,10 +20,12 @@ export type ProjectContent = Record<ContentChannel, string>;
 export type AppProject = {
   id: string;
   title: string;
+  titleSource: ProjectTitleSource;
   description: string;
   createdAt: string;
   updatedAt: string;
   status: ProjectStatus;
+  photoOptimization: ProjectPhotoOptimization;
   media: ProjectMedia;
   originalImage: string | null;
   optimizedImage: string | null;
@@ -23,7 +34,7 @@ export type AppProject = {
 
 export type LocalProfile = { name: string; company: string };
 
-type NewProjectInput = { title?: string; description: string };
+type NewProjectInput = { description: string };
 
 type UserAreaContextValue = {
   projects: AppProject[];
@@ -36,11 +47,12 @@ type UserAreaContextValue = {
   reloadPlan: () => Promise<void>;
   reloadProjects: () => Promise<void>;
   getProject: (id: string) => Promise<AppProject>;
-  getProjectMedia: (id: string) => Promise<ProjectMedia>;
-  optimizeProjectImage: (id: string) => Promise<ProjectMedia>;
+  getProjectMedia: (id: string) => Promise<ProjectMediaResponse>;
+  optimizeProjectImage: (id: string) => Promise<ProjectMediaResponse>;
   getProjectContent: (id: string) => Promise<ProjectContent | null>;
-  generateProjectContent: (id: string) => Promise<void>;
+  generateProjectContent: (id: string) => Promise<{ project: AppProject; content: ProjectContent }>;
   createProject: (input: NewProjectInput) => Promise<AppProject>;
+  renameProject: (id: string, title: string) => Promise<AppProject>;
   uploadProjectMedia: (projectId: string, file: File) => Promise<MediaAsset>;
   updateContent: (projectId: string, channel: ContentChannel, value: string) => void;
   updateProfile: (profile: LocalProfile) => void;
@@ -58,12 +70,6 @@ function readStorage<T>(key: string, fallback: T): T {
   }
 }
 
-function makeTitle(description: string) {
-  const firstSentence = description.split(/[.!?\n]/)[0]?.trim();
-  if (!firstSentence) return 'Mein neues Projekt';
-  return firstSentence.length > 48 ? `${firstSentence.slice(0, 45)}…` : firstSentence;
-}
-
 function toProjectContent(content: ProjectGeneratedContent | null): ProjectContent | null {
   if (!content || typeof content.googleBusiness !== 'string' || typeof content.socialMedia !== 'string' || typeof content.websiteReference !== 'string') return null;
   return { google: content.googleBusiness, social: content.socialMedia, website: content.websiteReference };
@@ -79,20 +85,41 @@ function mediaImages(projectId: string, media: ProjectMedia) {
 function toAppProject(project: Project): AppProject {
   const media: ProjectMedia = { original: project.media, optimized: null };
   return {
-    ...project,
+    id: project.id,
+    title: project.title,
+    titleSource: project.titleSource,
     description: project.description || '',
+    createdAt: project.createdAt,
+    updatedAt: project.updatedAt,
+    status: project.status,
+    photoOptimization: project.photoOptimization,
     media,
     ...mediaImages(project.id, media),
     content: null,
   };
 }
 
+function mergeServerProject(project: Project, current?: AppProject | null, content?: ProjectContent | null): AppProject {
+  const base = toAppProject(project);
+  if (!current) return { ...base, content: content ?? null };
+  const media: ProjectMedia = {
+    original: base.media.original ?? current.media.original,
+    optimized: current.media.optimized,
+  };
+  return {
+    ...base,
+    media,
+    ...mediaImages(project.id, media),
+    content: content !== undefined ? content : current.content,
+  };
+}
+
 export function projectStatusLabel(status: ProjectStatus) {
   if (status === 'draft') return 'Entwurf';
-  if (status === 'processing') return 'Wird erstellt';
-  if (status === 'failed') return 'Fehler';
-  if (status === 'published') return 'Veröffentlicht';
-  return 'Content erstellt';
+  if (status === 'processing') return 'Wird erstellt…';
+  if (status === 'ready') return 'Bereit';
+  if (status === 'finished') return 'Abgeschlossen';
+  return 'Erstellung fehlgeschlagen';
 }
 
 function projectLoadMessage(error: unknown) {
@@ -179,12 +206,25 @@ export function UserAreaProvider({ children }: { children: ReactNode }) {
   useEffect(() => { void reloadProjects(); }, [reloadProjects]);
   useEffect(() => { void reloadPlan(); }, [reloadPlan]);
 
+  useEffect(() => {
+    if (!user) return;
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') void reloadPlan();
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
+  }, [reloadPlan, user]);
+
   const getProject = useCallback(async (id: string) => {
     try {
       const result = await projectService.get(id);
-      const project = toAppProject(result.project);
-      setProjects(current => [project, ...current.filter(item => item.id !== project.id)]);
-      return project;
+      let resolved = toAppProject(result.project);
+      setProjects(current => {
+        const existing = current.find(item => item.id === id);
+        resolved = mergeServerProject(result.project, existing);
+        return [resolved, ...current.filter(item => item.id !== id)];
+      });
+      return resolved;
     } catch (error) {
       await handleUnauthorized(error);
       throw error;
@@ -194,11 +234,15 @@ export function UserAreaProvider({ children }: { children: ReactNode }) {
   const getProjectMedia = useCallback(async (id: string) => {
     try {
       const result = await projectService.getProjectMedia(id);
-      const media = result.media;
       setProjects(current => current.map(project => project.id === id
-        ? { ...project, media, ...mediaImages(id, media) }
+        ? {
+            ...project,
+            media: result.media,
+            photoOptimization: result.photoOptimization,
+            ...mediaImages(id, result.media),
+          }
         : project));
-      return media;
+      return result;
     } catch (error) {
       await handleUnauthorized(error);
       throw error;
@@ -210,6 +254,9 @@ export function UserAreaProvider({ children }: { children: ReactNode }) {
       await projectService.optimizeProjectImage(id);
       return await getProjectMedia(id);
     } catch (error) {
+      if (error instanceof ApiError && error.status === 409 && ['PHOTO_OPTIMIZATION_IN_PROGRESS', 'PHOTO_ALREADY_OPTIMIZED'].includes(error.code)) {
+        return await getProjectMedia(id);
+      }
       await handleUnauthorized(error);
       throw error;
     }
@@ -218,12 +265,29 @@ export function UserAreaProvider({ children }: { children: ReactNode }) {
   const createProject = useCallback(async (input: NewProjectInput) => {
     try {
       const result = await projectService.create({
-        title: input.title?.trim() || makeTitle(input.description),
         description: input.description.trim() || undefined,
       });
       const project = toAppProject(result.project);
       setProjects(current => [project, ...current.filter(item => item.id !== project.id)]);
+      await reloadPlan();
       return project;
+    } catch (error) {
+      if (error instanceof ApiError && error.code === 'TRIAL_PROJECT_LIMIT_REACHED') await reloadPlan();
+      await handleUnauthorized(error);
+      throw error;
+    }
+  }, [handleUnauthorized, reloadPlan]);
+
+  const renameProject = useCallback(async (id: string, title: string) => {
+    try {
+      const result = await projectService.rename(id, title);
+      let resolved = toAppProject(result.project);
+      setProjects(current => current.map(project => {
+        if (project.id !== id) return project;
+        resolved = mergeServerProject(result.project, project);
+        return resolved;
+      }));
+      return resolved;
     } catch (error) {
       await handleUnauthorized(error);
       throw error;
@@ -244,8 +308,33 @@ export function UserAreaProvider({ children }: { children: ReactNode }) {
 
   const generateProjectContent = useCallback(async (id: string) => {
     try {
-      await projectService.generateProjectContent(id);
-      setProjects(current => current.map(project => project.id === id ? { ...project, status: 'ready' } : project));
+      const result = await projectService.generateProjectContent(id);
+      const content = toProjectContent(result.content);
+      if (!content) throw new ApiError(500, 'PROJECT_CONTENT_UNAVAILABLE');
+
+      let resolved = { ...toAppProject(result.project), content };
+      try {
+        const mediaState = await projectService.getProjectMedia(id);
+        resolved = {
+          ...resolved,
+          media: mediaState.media,
+          photoOptimization: mediaState.photoOptimization,
+          ...mediaImages(id, mediaState.media),
+        };
+      } catch {
+        // Generation succeeded; media can still be refreshed independently.
+      }
+
+      setProjects(current => current.map(project => project.id === id ? {
+        ...resolved,
+        media: resolved.media.optimized ? resolved.media : {
+          original: resolved.media.original ?? project.media.original,
+          optimized: project.media.optimized,
+        },
+        optimizedImage: resolved.optimizedImage ?? project.optimizedImage,
+        originalImage: resolved.originalImage ?? project.originalImage,
+      } : project));
+      return { project: resolved, content };
     } catch (error) {
       await handleUnauthorized(error);
       throw error;
@@ -256,9 +345,13 @@ export function UserAreaProvider({ children }: { children: ReactNode }) {
     try {
       const result = await projectService.uploadMedia(projectId, file);
       const original = { id: result.media.id, mimeType: result.media.mimeType };
-      const originalOnly: ProjectMedia = { original, optimized: null };
       setProjects(current => current.map(project => project.id === projectId
-        ? { ...project, media: originalOnly, ...mediaImages(projectId, originalOnly) }
+        ? {
+            ...project,
+            media: { original, optimized: null },
+            originalImage: getProjectMediaUrl(projectId, original.id),
+            optimizedImage: null,
+          }
         : project));
       return result.media;
     } catch (error) {
@@ -291,10 +384,11 @@ export function UserAreaProvider({ children }: { children: ReactNode }) {
     getProjectContent,
     generateProjectContent,
     createProject,
+    renameProject,
     uploadProjectMedia,
     updateContent,
     updateProfile,
-  }), [createProject, generateProjectContent, getProject, getProjectContent, getProjectMedia, loadedProjectsOwner, optimizeProjectImage, plan, planError, planLoading, planOwnerId, profile, projects, projectsError, projectsLoading, reloadPlan, reloadProjects, uploadProjectMedia, user]);
+  }), [createProject, generateProjectContent, getProject, getProjectContent, getProjectMedia, loadedProjectsOwner, optimizeProjectImage, plan, planError, planLoading, planOwnerId, profile, projects, projectsError, projectsLoading, reloadPlan, reloadProjects, renameProject, uploadProjectMedia, user]);
 
   return <UserAreaContext.Provider value={value}>{children}</UserAreaContext.Provider>;
 }

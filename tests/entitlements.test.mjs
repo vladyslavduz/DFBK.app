@@ -20,12 +20,14 @@ const trial = {
   ok: true, plan: 'trial', displayName: 'Testzugang', status: 'active',
   voice: { enabled: true, maxWords: 10 },
   features: { contentGeneration: true, share: true, businessIntegrations: false },
+  usage: { projectsUsed: 3, projectsLimit: 5 },
   expiresAt: null,
 };
 const business = {
   ok: true, plan: 'business', displayName: 'Business', status: 'active',
   voice: { enabled: true, maxWords: null },
   features: { contentGeneration: true, share: true, businessIntegrations: true },
+  usage: { projectsUsed: 7, projectsLimit: null },
   expiresAt: null,
 };
 
@@ -42,6 +44,7 @@ test('controlled Trial → admin grant Business → refresh → admin revoke →
   assert.equal(first.voice.maxWords, 10);
   assert.equal(first.features.share, true);
   assert.equal(first.features.businessIntegrations, false);
+  assert.deepEqual(first.usage, { projectsUsed: 3, projectsLimit: 5 });
 
   // Simulate the server-side admin grant; the frontend only re-reads GET.
   serverPlan = business;
@@ -51,6 +54,7 @@ test('controlled Trial → admin grant Business → refresh → admin revoke →
   assert.equal(granted.features.share, true);
   assert.equal(granted.features.businessIntegrations, true);
   assert.equal(granted.source, 'backend');
+  assert.deepEqual(granted.usage, { projectsUsed: 7, projectsLimit: null });
 
   serverPlan = trial;
   const revoked = await entitlementsService.getCurrent();
@@ -65,6 +69,7 @@ test('fallback and malformed responses never grant Business', () => {
   assert.equal(fallbackTrialEntitlements.plan, 'trial');
   assert.equal(fallbackTrialEntitlements.features.share, false);
   assert.equal(fallbackTrialEntitlements.features.businessIntegrations, false);
+  assert.equal(fallbackTrialEntitlements.usage, null);
   assert.throws(() => normalizeEntitlements({ ...business, features: { ...business.features, share: false } }), /INVALID_ENTITLEMENTS_RESPONSE/);
   assert.throws(() => normalizeEntitlements({ ...business, status: 'expired' }), /INVALID_ENTITLEMENTS_RESPONSE/);
   assert.throws(() => normalizeEntitlements({ ...business, voice: { enabled: true, maxWords: 10 } }), /INVALID_ENTITLEMENTS_RESPONSE/);

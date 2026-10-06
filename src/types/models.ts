@@ -1,4 +1,6 @@
-export type ProjectStatus = 'draft' | 'processing' | 'ready' | 'approved' | 'published' | 'failed';
+export type ProjectStatus = 'draft' | 'processing' | 'ready' | 'finished' | 'failed';
+export type ProjectTitleSource = 'system' | 'auto' | 'manual';
+export type PhotoOptimizationState = 'available' | 'processing' | 'completed';
 export type Channel = 'google_business' | 'instagram' | 'facebook' | 'telegram' | 'website' | 'blog';
 
 export interface User {
@@ -41,9 +43,14 @@ export type ProjectMedia = {
   optimized: ProjectMediaRef | null;
 };
 
+export type ProjectPhotoOptimization = {
+  state: PhotoOptimizationState;
+};
+
 export type ProjectMediaResponse = {
   ok: true;
   media: ProjectMedia;
+  photoOptimization: ProjectPhotoOptimization;
 };
 
 export type ProjectOptimizeResponse = {
@@ -54,11 +61,13 @@ export type ProjectOptimizeResponse = {
 export interface Project {
   id: string;
   title: string;
+  titleSource: ProjectTitleSource;
   description: string | null;
   status: ProjectStatus;
   createdAt: string;
   updatedAt: string;
   media: ProjectMediaRef | null;
+  photoOptimization: ProjectPhotoOptimization;
 }
 
 export interface ProjectGeneratedContent {
@@ -70,6 +79,12 @@ export interface ProjectGeneratedContent {
 export type ProjectContentResponse = {
   ok: true;
   content: ProjectGeneratedContent | null;
+};
+
+export type ProjectGenerationResponse = {
+  ok: true;
+  project: Project;
+  content: ProjectGeneratedContent;
 };
 
 export interface GeneratedContent {

@@ -391,3 +391,63 @@
 @media (prefers-reduced-motion: reduce) {
   .processing-orb, .voice-button.is-recording { animation: none; }
 }
+
+
+/* Project Management + Trial Entitlements v1 */
+.sr-only { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+.projects-library-page { width: min(1180px,100%); }
+.project-library-controls { display: grid; grid-template-columns: minmax(220px,1fr) auto auto; gap: 12px; align-items: center; }
+.project-search input, .project-library-controls select { width: 100%; min-height: 46px; padding: 10px 12px; border: 1px solid #CBD5E1; border-radius: 11px; color: var(--text); background: #fff; font: inherit; }
+.project-view-switch { display: inline-flex; padding: 4px; border: 1px solid var(--border); border-radius: 12px; background: #fff; }
+.project-view-switch button { min-height: 38px; padding: 7px 10px; border: 0; border-radius: 8px; color: var(--muted); background: transparent; font: inherit; font-size: .8rem; font-weight: 800; cursor: pointer; }
+.project-view-switch button.is-active { color: #fff; background: var(--navy); }
+.project-list { display: grid; gap: 10px; }
+.project-card { position: relative; display: block; overflow: visible; }
+.project-card-open { min-width: 0; height: 100%; display: grid; grid-template-rows: 190px 1fr; overflow: hidden; border-radius: inherit; }
+.project-card-media { min-width: 0; min-height: 0; display: grid; place-items: center; overflow: hidden; background: #EEF2F5; }
+.project-card-media > img { width: 100%; height: 100%; object-fit: cover; }
+.project-card-image-missing { height: 100%; width: 100%; display: grid; place-items: center; align-content: center; gap: 7px; color: var(--muted); background: #F1F4F7; font-size: .78rem; text-align: center; }
+.project-card-image-missing .app-icon { width: 24px; height: 24px; }
+.project-card-open > .app-icon { display: none; }
+.project-card.is-compact { padding: 0; }
+.project-card.is-compact .project-card-open { grid-template: 86px / 108px minmax(0,1fr) 28px; align-items: center; padding: 9px; }
+.project-card.is-compact .project-card-media { height: 86px; border-radius: 13px; }
+.project-card.is-compact .project-card-copy { padding: 10px 12px; }
+.project-card.is-compact .project-card-open > .app-icon { display: block; color: var(--muted); }
+.project-rename-trigger { position: absolute; z-index: 3; right: 12px; bottom: 12px; width: 44px; height: 44px; display: grid; place-items: center; border: 1px solid var(--border); border-radius: 12px; color: var(--navy); background: rgba(255,255,255,.96); box-shadow: var(--shadow-soft); cursor: pointer; }
+.project-rename-trigger .app-icon { width: 18px; height: 18px; }
+.project-rename-trigger.is-compact { top: 50%; bottom: auto; transform: translateY(-50%); }
+.project-rename-editor { position: absolute; z-index: 5; inset: auto 10px 10px; display: grid; gap: 8px; padding: 10px; border: 1px solid var(--border); border-radius: 13px; background: #fff; box-shadow: var(--shadow); }
+.project-rename-editor input { min-width: 0; width: 100%; min-height: 44px; padding: 9px 11px; border: 1px solid #CBD5E1; border-radius: 10px; font: inherit; }
+.project-rename-actions { display: flex; gap: 8px; justify-content: flex-end; }
+.project-rename-actions .button { min-height: 40px; padding: 8px 11px; }
+.project-rename-error { color: #A92727; }
+.trial-progress-card { display: grid; grid-template-columns: 1fr minmax(180px,320px); gap: 18px; align-items: center; padding: 18px 20px; border: 1px solid #D9E7F7; border-radius: 18px; background: #F3F7FF; }
+.trial-progress-card strong { display: block; margin-top: 4px; color: var(--navy); }
+.trial-progress-card progress { width: 100%; height: 12px; }
+.business-plan-badge { width: max-content; padding: 8px 11px; border-radius: 999px; color: #137A4B; background: #E9F8F0; font-weight: 850; }
+.project-search-empty { display: grid; justify-items: center; gap: 14px; padding: 44px 20px; border: 1px dashed #CBD5E1; border-radius: 20px; background: #fff; text-align: center; }
+.status-finished { color: #137A4B; background: #E9F8F0; }
+.project-detail-title-row { display: flex; align-items: center; gap: 10px; }
+.project-detail-title-row h1 { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.project-detail-title-row .project-rename-trigger { position: static; flex: none; transform: none; }
+.project-detail-title-row .project-rename-editor { position: static; width: min(520px,100%); }
+.trial-limit-card { display: grid; justify-items: center; gap: 14px; padding: clamp(28px,5vw,48px); border: 1px solid #F0D2A4; border-radius: 24px; background: #FFF9EE; text-align: center; }
+.trial-limit-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+
+@media (max-width: 760px) {
+  .project-library-controls { grid-template-columns: 1fr; }
+  .project-view-switch { width: 100%; }
+  .project-view-switch button { flex: 1; min-height: 44px; }
+  .trial-progress-card { grid-template-columns: 1fr; }
+  .project-grid { grid-template-columns: 1fr; }
+  .project-card-open { grid-template-rows: min(58vw,260px) 1fr; }
+  .project-card.is-compact .project-card-open { grid-template: 74px / 88px minmax(0,1fr) 24px; }
+  .project-card.is-compact .project-card-media { height: 74px; }
+  .project-rename-editor { inset: auto 8px 8px; }
+  .project-rename-actions { flex-direction: column-reverse; }
+  .project-rename-actions .button { width: 100%; min-height: 44px; }
+  .project-detail-title-row { align-items: flex-start; flex-wrap: wrap; }
+  .trial-limit-actions { width: 100%; }
+  .trial-limit-actions .button { width: 100%; }
+}

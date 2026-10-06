@@ -32,6 +32,7 @@ export default function CreateProjectPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [mediaLoadError, setMediaLoadError] = useState('');
+  const [trialLimitReached, setTrialLimitReached] = useState(false);
   const submittingRef = useRef(false);
   const createdProjectRef = useRef<AppProject | null>(null);
   const mediaUploadedRef = useRef(false);
@@ -65,25 +66,35 @@ export default function CreateProjectPage() {
 
       if (!photoFile) throw new ApiError(400, 'PROJECT_IMAGE_REQUIRED');
       if (!mediaUploadedRef.current) {
-        const uploaded = await uploadProjectMedia(createdProject.id, photoFile);
-        const uploadedOriginal = getProjectMediaUrl(uploaded.projectId, uploaded.id);
-        createdProject = {
-          ...createdProject,
-          media: { original: { id: uploaded.id, mimeType: uploaded.mimeType }, optimized: null },
-          originalImage: uploadedOriginal,
-          optimizedImage: null,
-        };
-
+        let uploadedOriginal = '';
         try {
-          const media = await getProjectMedia(createdProject.id);
+          const uploaded = await uploadProjectMedia(createdProject.id, photoFile);
+          uploadedOriginal = getProjectMediaUrl(uploaded.projectId, uploaded.id);
           createdProject = {
             ...createdProject,
-            media,
-            originalImage: media.original ? getProjectMediaUrl(createdProject.id, media.original.id) : uploadedOriginal,
-            optimizedImage: media.optimized ? getProjectMediaUrl(createdProject.id, media.optimized.id) : null,
+            media: { original: { id: uploaded.id, mimeType: uploaded.mimeType }, optimized: null },
+            originalImage: uploadedOriginal,
+            optimizedImage: null,
           };
-        } catch {
-          setMediaLoadError('Die von DFBK.app optimierte Bildversion konnte noch nicht geladen werden. Das Original bleibt verfügbar.');
+        } catch (uploadError) {
+          if (!(uploadError instanceof ApiError) || uploadError.status !== 409 || !['PHOTO_OPTIMIZATION_IN_PROGRESS', 'PHOTO_ALREADY_OPTIMIZED'].includes(uploadError.code)) {
+            throw uploadError;
+          }
+        }
+
+        try {
+          const mediaState = await getProjectMedia(createdProject.id);
+          if (!mediaState.media.original) throw new ApiError(500, 'PROJECT_IMAGE_UNAVAILABLE');
+          createdProject = {
+            ...createdProject,
+            media: mediaState.media,
+            photoOptimization: mediaState.photoOptimization,
+            originalImage: getProjectMediaUrl(createdProject.id, mediaState.media.original.id),
+            optimizedImage: mediaState.media.optimized ? getProjectMediaUrl(createdProject.id, mediaState.media.optimized.id) : null,
+          };
+        } catch (mediaError) {
+          if (!uploadedOriginal) throw mediaError;
+          setMediaLoadError('Die Bildversionen konnten noch nicht vollständig geladen werden. Das Original bleibt verfügbar.');
         }
 
         createdProjectRef.current = createdProject;
@@ -99,29 +110,52 @@ export default function CreateProjectPage() {
 
       if (!generationCompletedRef.current) {
         generationAttemptedRef.current = true;
-        await generateProjectContent(createdProject.id);
+        const generated = await generateProjectContent(createdProject.id);
+        createdProject = generated.project;
+        createdProjectRef.current = createdProject;
         generationCompletedRef.current = true;
       }
 
-      const content = await getProjectContent(createdProject.id);
+      const content = createdProject.content || await getProjectContent(createdProject.id);
       if (!content) throw new ApiError(500, 'PROJECT_CONTENT_UNAVAILABLE');
 
-      setProject({ ...createdProject, status: 'ready', content });
+      setProject({ ...createdProject, content });
       setStep(4);
     } catch (error) {
-      setSubmitError(projectFlowError(error));
+      if (error instanceof ApiError && error.code === 'TRIAL_PROJECT_LIMIT_REACHED') {
+        setTrialLimitReached(true);
+        setSubmitError('');
+      } else {
+        setSubmitError(projectFlowError(error));
+      }
     } finally {
       submittingRef.current = false;
       setSubmitting(false);
     }
   }, [createProject, description, generateProjectContent, getProject, getProjectContent, getProjectMedia, photoFile, uploadProjectMedia]);
 
+  if (trialLimitReached) {
+    return (
+      <div className="app-page app-wizard-page">
+        <section className="trial-limit-card">
+          <span className="app-kicker">Testphase</span>
+          <h1>Deine Testphase ist vollständig genutzt.</h1>
+          <p>Du hast DFBK.app mit 5 eigenen Projekten ausprobiert.</p>
+          <div className="trial-limit-actions">
+            <AppLink className="button" to="/app/billing">Mit Business weitermachen</AppLink>
+            <AppLink className="button button-secondary" to="/app/projects">Meine Projekte</AppLink>
+          </div>
+        </section>
+      </div>
+    );
+  }
+
   return (
     <div className="app-page app-wizard-page">
       <nav className="wizard-progress" aria-label="Projektfortschritt">{['Foto', 'Zusatzinfo', 'DFBK.app', 'Ergebnis'].map((label, index) => { const number = index + 1; return <span className={number === step ? 'is-active' : number < step ? 'is-done' : ''} key={label}><i>{number < step ? <AppIcon name="check" /> : number}</i><b>{label}</b></span>; })}</nav>
       {step === 1 && <PhotoUploader preview={image} onSelect={selectPhoto} onContinue={() => { if (createdProjectRef.current) void finishProcessing(); else setStep(2); }} />}
       {step === 2 && <DescriptionInput value={description} onChange={setDescription} onBack={() => setStep(1)} onContinue={finishProcessing} />}
-      {step === 3 && <ProcessingState includesPhotoOptimization error={submitError} retrying={submitting} onRetry={finishProcessing} onChangePhoto={() => { setSubmitError(''); setStep(1); }} />}
+      {step === 3 && <ProcessingState includesPhotoOptimization error={submitError} retrying={submitting} onRetry={finishProcessing} onChangePhoto={createdProjectRef.current && createdProjectRef.current.photoOptimization.state !== 'available' ? undefined : () => { setSubmitError(''); setStep(1); }} />}
       {step === 4 && project?.content && (
         <section className="wizard-result">
           <header className="wizard-heading center"><span className="result-check"><AppIcon name="check" /></span><span className="app-kicker">Schritt 4</span><h1>Dein Content ist fertig</h1><p>Du kannst die Texte direkt verwenden oder noch bearbeiten.</p></header>
@@ -131,7 +165,9 @@ export default function CreateProjectPage() {
             originalImage={project.originalImage}
             optimizedImage={project.optimizedImage}
             mediaLoadError={mediaLoadError}
+            photoOptimizationState={project.photoOptimization.state}
             onImagesChange={(originalImage, optimizedImage) => setProject(current => current ? { ...current, originalImage, optimizedImage } : current)}
+            onOptimizationStateChange={state => setProject(current => current ? { ...current, photoOptimization: { state } } : current)}
           />
 
           <div className="result-photo-summary"><div><span className={`project-status status-${project.status}`}><AppIcon name="check" />{projectStatusLabel(project.status)}</span><h2>{project.title}</h2>{project.description && <p>{project.description}</p>}</div></div>
