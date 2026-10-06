@@ -4,17 +4,11 @@ import {
   optimizeImage,
 } from '../lib/image-optimization';
 import { json } from '../lib/response';
-import { hashSessionToken } from '../lib/session';
+import { requireUser } from '../lib/user';
+import { requireSameOriginMutation } from '../lib/request-security';
+import type { PhotoOptimizationState } from '../lib/project-management';
 
-type SessionRow = {
-  user_id: string;
-  expires_at: string;
-  revoked_at: string | null;
-};
-
-type ProjectRow = {
-  id: string;
-};
+type ProjectRow = { id: string; photo_optimization_state: PhotoOptimizationState };
 
 type MediaRow = {
   id: string;
@@ -39,6 +33,8 @@ export type ProjectImageOptimizationResult =
   | {
       ok: false;
       error:
+        | 'PHOTO_ALREADY_OPTIMIZED'
+        | 'PHOTO_OPTIMIZATION_IN_PROGRESS'
         | 'PROJECT_NOT_FOUND'
         | 'PROJECT_IMAGE_REQUIRED'
         | 'PROJECT_IMAGE_READ_FAILED'
@@ -49,249 +45,116 @@ export type ProjectImageOptimizationResult =
         | 'OPTIMIZED_IMAGE_STORAGE_FAILED';
     };
 
-function getCookie(request: Request, name: string): string | null {
-  const cookieHeader = request.headers.get('Cookie');
-
-  if (!cookieHeader) {
-    return null;
-  }
-
-  for (const cookie of cookieHeader.split(';')) {
-    const [cookieName, ...cookieValueParts] = cookie.trim().split('=');
-
-    if (cookieName === name) {
-      return cookieValueParts.join('=') || null;
-    }
-  }
-
-  return null;
-}
-
-async function getAuthenticatedUserId(
-  request: Request,
-  env: Env
-): Promise<string | Response> {
-  const sessionToken = getCookie(request, 'dfbk_session');
-
-  if (!sessionToken) {
-    return json({ ok: false, error: 'NOT_AUTHENTICATED' }, 401);
-  }
-
-  const tokenHash = await hashSessionToken(sessionToken);
-  const session = await env.DB
-    .prepare(
-      `
-      SELECT user_id, expires_at, revoked_at
-      FROM sessions
-      WHERE token_hash = ?1
-      LIMIT 1
-      `
-    )
-    .bind(tokenHash)
-    .first<SessionRow>();
-
-  if (!session) {
-    return json({ ok: false, error: 'INVALID_SESSION' }, 401);
-  }
-
-  if (session.revoked_at !== null) {
-    return json({ ok: false, error: 'SESSION_REVOKED' }, 401);
-  }
-
-  const expiresAt = new Date(session.expires_at);
-
-  if (
-    Number.isNaN(expiresAt.getTime()) ||
-    expiresAt.getTime() <= Date.now()
-  ) {
-    return json({ ok: false, error: 'SESSION_EXPIRED' }, 401);
-  }
-
-  return session.user_id;
+async function getAuthenticatedUserId(request: Request, env: Env): Promise<string | Response> {
+  const user = await requireUser(request, env);
+  return user instanceof Response ? user : user.id;
 }
 
 export async function optimizeProjectImageForUser(
-  env: Env,
-  userId: string,
-  projectId: string
+  env: Env, userId: string, projectId: string
 ): Promise<ProjectImageOptimizationResult> {
-  const project = await env.DB
-    .prepare(
-      `
-      SELECT id
-      FROM projects
-      WHERE id = ?1
-        AND user_id = ?2
-      LIMIT 1
-      `
-    )
-    .bind(projectId, userId)
-    .first<ProjectRow>();
-
-  if (!project) {
-    return { ok: false, error: 'PROJECT_NOT_FOUND' };
-  }
-
-  const original = await env.DB
-    .prepare(
-      `
-      SELECT id, storage_key, mime_type, size_bytes
-      FROM project_media
-      WHERE project_id = ?1
-        AND media_type = 'image'
-        AND role = 'original'
-      ORDER BY created_at DESC, id DESC
-      LIMIT 1
-      `
-    )
-    .bind(projectId)
-    .first<MediaRow>();
-
-  if (!original) {
+  const project = await env.DB.prepare(`SELECT id, photo_optimization_state FROM projects
+    WHERE id = ?1 AND user_id = ?2`).bind(projectId, userId).first<ProjectRow>();
+  if (!project) return { ok: false, error: 'PROJECT_NOT_FOUND' };
+  const token = crypto.randomUUID();
+  // Atomic claim before reading original or contacting the paid provider.
+  const claim = await env.DB.prepare(`UPDATE projects SET photo_optimization_state = 'processing',
+    photo_optimization_token = ?1, photo_optimization_started_at = CURRENT_TIMESTAMP
+    WHERE id = ?2 AND user_id = ?3 AND photo_optimization_state = 'available'
+      AND EXISTS (SELECT 1 FROM project_media WHERE project_id = ?2 AND role = 'original')
+      AND NOT EXISTS (SELECT 1 FROM project_media WHERE project_id = ?2 AND role = 'optimized')`)
+    .bind(token, projectId, userId).run();
+  if (claim.meta.changes === 0) {
+    const actual = await env.DB.prepare(`SELECT photo_optimization_state,
+      EXISTS (SELECT 1 FROM project_media WHERE project_id = ?1 AND role = 'optimized') AS has_optimized,
+      EXISTS (SELECT 1 FROM project_media WHERE project_id = ?1 AND role = 'original') AS has_original
+      FROM projects WHERE id = ?1 AND user_id = ?2`).bind(projectId, userId)
+      .first<{ photo_optimization_state: PhotoOptimizationState; has_optimized: number; has_original: number }>();
+    if (!actual) return { ok: false, error: 'PROJECT_NOT_FOUND' };
+    if (actual.has_optimized || actual.photo_optimization_state === 'completed') return { ok: false, error: 'PHOTO_ALREADY_OPTIMIZED' };
+    if (actual.photo_optimization_state === 'processing') return { ok: false, error: 'PHOTO_OPTIMIZATION_IN_PROGRESS' };
     return { ok: false, error: 'PROJECT_IMAGE_REQUIRED' };
   }
 
-  let originalObject: R2ObjectBody | null;
-
+  let preserveProcessing = false;
   try {
-    originalObject = await env.MEDIA.get(original.storage_key);
-  } catch (error) {
-    console.error('IMAGE_OPTIMIZATION_ORIGINAL_R2_READ_ERROR', error);
-    return { ok: false, error: 'PROJECT_IMAGE_READ_FAILED' };
-  }
-
-  if (!originalObject) {
-    console.error('IMAGE_OPTIMIZATION_ORIGINAL_R2_OBJECT_MISSING');
-    return { ok: false, error: 'PROJECT_IMAGE_UNAVAILABLE' };
-  }
-
-  const originalBytes = new Uint8Array(await originalObject.arrayBuffer());
-
-  let optimized;
-
-  try {
-    optimized = await optimizeImage(env, {
-      imageBytes: originalBytes,
-      imageMimeType: original.mime_type,
-    });
-  } catch (error) {
-    if (error instanceof ImageOptimizationError) {
-      console.error('PROJECT_IMAGE_OPTIMIZATION_ERROR', error.code);
-      return { ok: false, error: error.code };
-    }
-
-    console.error('PROJECT_IMAGE_OPTIMIZATION_UNEXPECTED_ERROR', error);
-    return { ok: false, error: 'IMAGE_OPTIMIZATION_FAILED' };
-  }
-
-  const oldOptimized = await env.DB
-    .prepare(
-      `
-      SELECT id, storage_key, mime_type, size_bytes
-      FROM project_media
-      WHERE project_id = ?1
-        AND media_type = 'image'
-        AND role = 'optimized'
-      ORDER BY created_at DESC, id DESC
-      `
-    )
-    .bind(projectId)
-    .all<MediaRow>();
-
-  const mediaId = crypto.randomUUID();
-  const storageKey = [
-    'users',
-    userId,
-    'projects',
-    projectId,
-    'optimized',
-    `${mediaId}.${optimized.extension}`,
-  ].join('/');
-
-  try {
-    await env.MEDIA.put(storageKey, optimized.bytes, {
-      httpMetadata: {
-        contentType: optimized.mimeType,
-      },
-      customMetadata: {
-        projectId,
-        mediaId,
-        role: 'optimized',
-        sourceMediaId: original.id,
-      },
-    });
-  } catch (error) {
-    console.error('OPTIMIZED_IMAGE_R2_PUT_ERROR', error);
-    return { ok: false, error: 'OPTIMIZED_IMAGE_STORAGE_FAILED' };
-  }
-
-  try {
-    await env.DB.batch([
-      env.DB
-        .prepare(
-          `
-          INSERT INTO project_media (
-            id,
-            project_id,
-            storage_key,
-            media_type,
-            role,
-            mime_type,
-            size_bytes
-          )
-          VALUES (?1, ?2, ?3, 'image', 'optimized', ?4, ?5)
-          `
-        )
-        .bind(
-          mediaId,
-          projectId,
-          storageKey,
-          optimized.mimeType,
-          optimized.bytes.byteLength
-        ),
-      env.DB
-        .prepare(
-          `
-          DELETE FROM project_media
-          WHERE project_id = ?1
-            AND media_type = 'image'
-            AND role = 'optimized'
-            AND id != ?2
-          `
-        )
-        .bind(projectId, mediaId),
-    ]);
-  } catch (error) {
-    console.error('OPTIMIZED_IMAGE_DB_WRITE_ERROR', error);
-
+    const original = await env.DB.prepare(`SELECT id, storage_key, mime_type, size_bytes FROM project_media
+      WHERE project_id = ?1 AND role = 'original' AND media_type = 'image'
+      ORDER BY created_at DESC, id DESC LIMIT 1`).bind(projectId).first<MediaRow>();
+    if (!original) return { ok: false, error: 'PROJECT_IMAGE_REQUIRED' };
+    let originalBytes: Uint8Array;
     try {
-      await env.MEDIA.delete(storageKey);
-    } catch (cleanupError) {
-      console.error('OPTIMIZED_IMAGE_NEW_R2_CLEANUP_ERROR', cleanupError);
+      const object = await env.MEDIA.get(original.storage_key);
+      if (!object) return { ok: false, error: 'PROJECT_IMAGE_UNAVAILABLE' };
+      originalBytes = new Uint8Array(await object.arrayBuffer());
+    } catch {
+      return { ok: false, error: 'PROJECT_IMAGE_READ_FAILED' };
     }
-
-    return { ok: false, error: 'OPTIMIZED_IMAGE_STORAGE_FAILED' };
-  }
-
-  for (const oldMedia of oldOptimized.results) {
-    if (oldMedia.storage_key === storageKey) {
-      continue;
-    }
-
+    let optimized;
     try {
-      await env.MEDIA.delete(oldMedia.storage_key);
+      optimized = await optimizeImage(env, { imageBytes: originalBytes, imageMimeType: original.mime_type });
     } catch (error) {
-      console.error('OPTIMIZED_IMAGE_OLD_R2_CLEANUP_ERROR', error);
+      return { ok: false, error: error instanceof ImageOptimizationError ? error.code : 'IMAGE_OPTIMIZATION_FAILED' };
+    }
+    const mediaId = crypto.randomUUID();
+    const storageKey = `users/${userId}/projects/${projectId}/optimized/${mediaId}.${optimized.extension}`;
+    try {
+      await env.MEDIA.put(storageKey, optimized.bytes, {
+        httpMetadata: { contentType: optimized.mimeType },
+        customMetadata: { projectId, mediaId, role: 'optimized', sourceMediaId: original.id },
+      });
+    } catch {
+      return { ok: false, error: 'OPTIMIZED_IMAGE_STORAGE_FAILED' };
+    }
+    const success: ProjectImageOptimizationResult = { ok: true, media: { id: mediaId, mimeType: optimized.mimeType } };
+    try {
+      const results = await env.DB.batch([
+        env.DB.prepare(`INSERT INTO project_media (id, project_id, storage_key, media_type, role, mime_type, size_bytes)
+          SELECT ?1, ?2, ?3, 'image', 'optimized', ?4, ?5 FROM projects p
+          WHERE p.id = ?2 AND p.user_id = ?6 AND p.photo_optimization_state = 'processing'
+            AND p.photo_optimization_token = ?7
+            AND NOT EXISTS (SELECT 1 FROM project_media WHERE project_id = ?2 AND role = 'optimized')`)
+          .bind(mediaId, projectId, storageKey, optimized.mimeType, optimized.bytes.byteLength, userId, token),
+        env.DB.prepare(`UPDATE projects SET photo_optimization_state = 'completed',
+          photo_optimization_token = NULL, photo_optimization_started_at = NULL, updated_at = CURRENT_TIMESTAMP
+          WHERE id = ?1 AND user_id = ?2 AND photo_optimization_token = ?3
+            AND EXISTS (SELECT 1 FROM project_media WHERE id = ?4 AND project_id = ?1)`)
+          .bind(projectId, userId, token, mediaId),
+      ]);
+      if (results[0].meta.changes !== 1 || results[1].meta.changes !== 1) throw new Error('OPTIMIZATION_COMMIT_NOT_CONFIRMED');
+      return success;
+    } catch {
+      // D1 may have committed even if its response was lost. Never delete a working image.
+      let saved: { id: string } | null = null;
+      try {
+        saved = await env.DB.prepare(`SELECT id FROM project_media WHERE id = ?1 AND project_id = ?2`)
+          .bind(mediaId, projectId).first<{ id: string }>();
+      } catch {
+        preserveProcessing = true;
+        console.error('OPTIMIZATION_COMMIT_STATUS_UNKNOWN');
+      }
+      if (saved) return success;
+      if (!preserveProcessing) {
+        try { await env.MEDIA.delete(storageKey); }
+        catch { console.error('OPTIMIZATION_ORPHAN_CLEANUP_FAILED'); }
+      }
+      return { ok: false, error: 'OPTIMIZED_IMAGE_STORAGE_FAILED' };
+    }
+  } catch {
+    console.error('PROJECT_IMAGE_OPTIMIZATION_FAILED');
+    return { ok: false, error: 'IMAGE_OPTIMIZATION_FAILED' };
+  } finally {
+    if (!preserveProcessing) {
+      try {
+        await env.DB.prepare(`UPDATE projects SET photo_optimization_state = 'available',
+          photo_optimization_token = NULL, photo_optimization_started_at = NULL
+          WHERE id = ?1 AND user_id = ?2 AND photo_optimization_token = ?3
+            AND photo_optimization_state = 'processing'
+            AND NOT EXISTS (SELECT 1 FROM project_media WHERE project_id = ?1 AND role = 'optimized')`)
+          .bind(projectId, userId, token).run();
+      } catch { console.error('PHOTO_OPTIMIZATION_RELEASE_FAILED'); }
     }
   }
-
-  return {
-    ok: true,
-    media: {
-      id: mediaId,
-      mimeType: optimized.mimeType,
-    },
-  };
 }
 
 export async function optimizeProjectImageForRequest(
@@ -322,7 +185,7 @@ async function getProjectMediaState(
   const project = await env.DB
     .prepare(
       `
-      SELECT id
+      SELECT id, photo_optimization_state
       FROM projects
       WHERE id = ?1
         AND user_id = ?2
@@ -370,6 +233,7 @@ async function getProjectMediaState(
   return json(
     {
       ok: true,
+      photoOptimization: { state: project.photo_optimization_state },
       media: {
         original: original
           ? { id: original.id, mimeType: original.mime_type }
@@ -414,7 +278,16 @@ export async function handleProjectImageOptimization(
     return json({ ok: false, error: 'INVALID_PROJECT_ID' }, 400);
   }
 
-  const result = await optimizeProjectImageForRequest(request, env, projectId);
+  const userId = await getAuthenticatedUserId(request, env);
+  if (userId instanceof Response) return userId;
+  const originError = requireSameOriginMutation(request);
+  if (originError) return originError;
+  let result: ProjectImageOptimizationResult;
+  try { result = await optimizeProjectImageForUser(env, userId, projectId); }
+  catch {
+    console.error('PHOTO_OPTIMIZATION_REQUEST_FAILED');
+    return json({ ok: false, error: 'IMAGE_OPTIMIZATION_FAILED' }, 500);
+  }
 
   if (result instanceof Response) {
     return result;
@@ -422,6 +295,10 @@ export async function handleProjectImageOptimization(
 
   if (result.ok) {
     return json({ ok: true, optimized: result.media }, 200);
+  }
+
+  if (result.error === 'PHOTO_ALREADY_OPTIMIZED' || result.error === 'PHOTO_OPTIMIZATION_IN_PROGRESS') {
+    return json({ ok: false, error: result.error }, 409);
   }
 
   if (result.error === 'PROJECT_NOT_FOUND') {

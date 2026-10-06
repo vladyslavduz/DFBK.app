@@ -1,3 +1,5 @@
+import { autoTitleStatement } from '../lib/project-management';
+import { getSerializedProject } from './projects';
 import type { Env } from '../lib/env';
 import { json } from '../lib/response';
 import { hashSessionToken } from '../lib/session';
@@ -262,6 +264,7 @@ async function generateProjectContent(
 
   try {
     await env.DB.batch([
+      ...(content.projectTitle ? [autoTitleStatement(env, authenticatedUser, projectId, content.projectTitle)] : []),
       env.DB
         .prepare(upsert)
         .bind(
@@ -313,6 +316,7 @@ async function generateProjectContent(
   return json(
     {
       ok: true,
+      project: await getSerializedProject(env, authenticatedUser, projectId),
       content: {
         googleBusiness: content.googleBusiness,
         socialMedia: content.socialMedia,

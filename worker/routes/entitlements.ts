@@ -1,3 +1,4 @@
+import { getProjectUsage } from '../lib/project-management';
 import type { Env } from '../lib/env';
 import { json } from '../lib/response';
 import { buildEntitlements } from '../lib/entitlements';
@@ -8,7 +9,8 @@ export async function handleEntitlements(request: Request, env: Env, pathname: s
   try {
     const user = await requireUser(request, env);
     if (user instanceof Response) return user;
-    return json(buildEntitlements(user.plan));
+    const state = await getProjectUsage(env, user.id);
+    return json({ ...buildEntitlements(state.plan), usage: state.usage });
   } catch {
     console.error('ACCOUNT_ENTITLEMENTS_READ_ERROR');
     return json({ ok: false, error: 'ENTITLEMENTS_READ_FAILED' }, 500);
