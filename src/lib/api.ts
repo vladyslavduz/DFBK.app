@@ -12,7 +12,13 @@ export class ApiError extends Error {
   }
 }
 
-export async function apiRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
+export type ApiResponse<T> = {
+  data: T;
+  status: number;
+  headers: Headers;
+};
+
+async function performApiRequest<T>(path: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
   const headers = new Headers(options.headers);
 
   if (options.body && !(options.body instanceof FormData) && !headers.has('Content-Type')) {
@@ -29,5 +35,18 @@ export async function apiRequest<T>(path: string, options: RequestInit = {}): Pr
   if (!response.ok) {
     throw new ApiError(response.status, body?.error || 'API_ERROR');
   }
-  return body as T;
+
+  return {
+    data: body as T,
+    status: response.status,
+    headers: response.headers,
+  };
+}
+
+export async function apiRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
+  return (await performApiRequest<T>(path, options)).data;
+}
+
+export async function apiRequestWithResponse<T>(path: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
+  return performApiRequest<T>(path, options);
 }
