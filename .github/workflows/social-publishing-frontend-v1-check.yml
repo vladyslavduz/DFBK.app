@@ -1,0 +1,31 @@
+name: Social Publishing Frontend V1 Check
+
+on:
+  push:
+    branches:
+      - frontend/social-publishing-v1
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install
+        run: npm ci
+      - name: Build
+        run: npm run build
+      - name: Tests
+        run: node --test tests/*.test.mjs
+      - name: Diff check
+        run: git diff --check origin/main...HEAD
+      - name: TypeScript diagnostic
+        continue-on-error: true
+        run: npx tsc --noEmit
