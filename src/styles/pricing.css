@@ -2,10 +2,10 @@
 .pricing-v1.section-muted { background: #EEF3F7; }
 .pricing-v1-page { padding-top: 72px; }
 .pricing-v1-container { display: grid; gap: 56px; }
-.pricing-v1-header { max-width: 760px; margin: 0 auto; text-align: center; }
-.pricing-v1-header h2 { margin: 0 auto 18px; max-width: 720px; }
-.pricing-v1-header > p { margin: 0 auto; max-width: 680px; color: var(--muted); font-size: 1.08rem; }
-.pricing-v1-trust { display: flex; justify-content: center; flex-wrap: wrap; gap: 10px 18px; margin-top: 22px; color: var(--muted); font-size: .9rem; font-weight: 700; }
+.pricing-v1-header { max-width: var(--section-heading-max); margin: 0; text-align: left; }
+.pricing-v1-header h2 { margin: 0 0 16px; max-width: var(--section-heading-max); }
+.pricing-v1-header > p { margin: 0; max-width: 680px; color: var(--muted); font-size: 1.08rem; }
+.pricing-v1-trust { display: flex; justify-content: flex-start; flex-wrap: wrap; gap: 10px 18px; margin-top: 22px; color: var(--muted); font-size: .9rem; font-weight: 700; }
 .pricing-v1-trust span + span::before { content: '·'; margin-right: 18px; color: #A6B3BF; }
 .pricing-v1-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; align-items: stretch; }
 .pricing-v1-card { position: relative; display: flex; flex-direction: column; min-height: 100%; padding: 30px; border: 1px solid var(--border); border-radius: 24px; background: var(--card); box-shadow: var(--shadow-soft); }
