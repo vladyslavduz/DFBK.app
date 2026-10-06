@@ -311,12 +311,29 @@ export function UserAreaProvider({ children }: { children: ReactNode }) {
       const result = await projectService.generateProjectContent(id);
       const content = toProjectContent(result.content);
       if (!content) throw new ApiError(500, 'PROJECT_CONTENT_UNAVAILABLE');
-      let resolved = toAppProject(result.project);
-      setProjects(current => current.map(project => {
-        if (project.id !== id) return project;
-        resolved = mergeServerProject(result.project, project, content);
-        return resolved;
-      }));
+
+      let resolved = { ...toAppProject(result.project), content };
+      try {
+        const mediaState = await projectService.getProjectMedia(id);
+        resolved = {
+          ...resolved,
+          media: mediaState.media,
+          photoOptimization: mediaState.photoOptimization,
+          ...mediaImages(id, mediaState.media),
+        };
+      } catch {
+        // Generation succeeded; media can still be refreshed independently.
+      }
+
+      setProjects(current => current.map(project => project.id === id ? {
+        ...resolved,
+        media: resolved.media.optimized ? resolved.media : {
+          original: resolved.media.original ?? project.media.original,
+          optimized: project.media.optimized,
+        },
+        optimizedImage: resolved.optimizedImage ?? project.optimizedImage,
+        originalImage: resolved.originalImage ?? project.originalImage,
+      } : project));
       return { project: resolved, content };
     } catch (error) {
       await handleUnauthorized(error);
