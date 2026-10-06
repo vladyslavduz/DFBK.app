@@ -3,6 +3,11 @@ import { apiRequest } from '../lib/api';
 export type PlanCode = 'trial' | 'business';
 export const TRIAL_VOICE_MAX_WORDS = 10;
 
+export type PlanUsage = {
+  projectsUsed: number;
+  projectsLimit: number | null;
+};
+
 export type PlanEntitlements = {
   plan: PlanCode;
   displayName: 'Testzugang' | 'Business';
@@ -16,6 +21,7 @@ export type PlanEntitlements = {
     share: boolean;
     businessIntegrations: boolean;
   };
+  usage: PlanUsage | null;
   expiresAt: string | null;
   source: 'backend' | 'fallback';
 };
@@ -33,6 +39,7 @@ export const fallbackTrialEntitlements: PlanEntitlements = {
     share: false,
     businessIntegrations: false,
   },
+  usage: null,
   expiresAt: null,
   source: 'fallback',
 };
@@ -51,8 +58,24 @@ type BackendEntitlementsResponse = {
     share?: unknown;
     businessIntegrations?: unknown;
   };
+  usage?: {
+    projectsUsed?: unknown;
+    projectsLimit?: unknown;
+  };
   expiresAt?: unknown;
 };
+
+function normalizeUsage(result: BackendEntitlementsResponse, business: boolean): PlanUsage | null {
+  const used = result.usage?.projectsUsed;
+  const limit = result.usage?.projectsLimit;
+  if (!Number.isInteger(used) || (used as number) < 0) return null;
+  if (business) {
+    if (limit !== null) return null;
+    return { projectsUsed: used as number, projectsLimit: null };
+  }
+  if (!Number.isInteger(limit) || (limit as number) < 1) return null;
+  return { projectsUsed: used as number, projectsLimit: limit as number };
+}
 
 export function normalizeEntitlements(result: BackendEntitlementsResponse): PlanEntitlements {
   const business = result?.ok === true && result.plan === 'business';
@@ -60,14 +83,15 @@ export function normalizeEntitlements(result: BackendEntitlementsResponse): Plan
   const expectedName = business ? 'Business' : 'Testzugang';
   const voice = result?.voice;
   const features = result?.features;
+  const usage = normalizeUsage(result, business);
 
-  // Only a complete, active backend response can grant plan features.
   if (
     (!trial && !business) || result.status !== 'active' ||
     result.displayName !== expectedName || voice?.enabled !== true ||
     voice.maxWords !== (business ? null : TRIAL_VOICE_MAX_WORDS) ||
     features?.contentGeneration !== true || features.share !== true ||
-    features.businessIntegrations !== business || result.expiresAt !== null
+    features.businessIntegrations !== business || result.expiresAt !== null ||
+    usage === null
   ) throw new Error('INVALID_ENTITLEMENTS_RESPONSE');
 
   return {
@@ -83,6 +107,7 @@ export function normalizeEntitlements(result: BackendEntitlementsResponse): Plan
       share: true,
       businessIntegrations: business,
     },
+    usage,
     expiresAt: null,
     source: 'backend',
   };
