@@ -35,7 +35,7 @@ export default function HowItWorks() {
   return (
     <section id="how" className="section section-muted process-section">
       <div className="container">
-        <header className="process-heading center">
+        <header className="process-heading">
           <span className="eyebrow">Ablauf</span>
           <h2>So funktioniert DFBK.app</h2>
           <p>In 5 einfachen Schritten von deiner Arbeit zu mehr Kunden.</p>
