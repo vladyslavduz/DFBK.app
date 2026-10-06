@@ -107,14 +107,14 @@ export default function AppIntegrationsPage() {
               )}
 
               <div className="social-connection-actions">
-                {isMeta && connection?.availability === 'available' && !connection.connected && !showCandidates && (
+                {isMeta && connection?.availability === 'available' && connection.status === 'reconnect_required' && !showCandidates && (
+                  <button className="button" type="button" onClick={() => connect(provider.id)}>Erneut verbinden</button>
+                )}
+                {isMeta && connection?.availability === 'available' && connection.status === 'not_connected' && !showCandidates && (
                   <button className="button" type="button" onClick={() => connect(provider.id)}>Verbinden</button>
                 )}
                 {isMeta && connection?.connected && (
-                  <>
-                    {connection.status === 'reconnect_required' && <button className="button" type="button" onClick={() => connect(provider.id)}>Erneut verbinden</button>}
-                    <button className="button button-secondary" type="button" onClick={() => void remove(provider.id)}>Verbindung trennen</button>
-                  </>
+                  <button className="button button-secondary" type="button" onClick={() => void remove(provider.id)}>Verbindung trennen</button>
                 )}
                 {(!connection || connection.availability !== 'available') && <span className="mvp-integration-status">{availabilityText(provider.id, connection?.availability)}</span>}
               </div>
