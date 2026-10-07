@@ -147,8 +147,8 @@ export async function handleSocialPublish(request: Request, env: Env, pathname: 
     const jobs=(await env.DB.prepare(`SELECT * FROM publication_jobs WHERE request_id=?1 AND user_id=?2 AND project_id=?3`).bind(saved.id,user.id,projectId).all<Job>()).results??[];
     // No AI, no optimization; processing/published/failed are never re-published on replay.
     for(const job of jobs)if(job.status==='pending')await runJob(env,job);
-    const result=(await env.DB.prepare(`SELECT * FROM publication_jobs WHERE request_id=?1 AND user_id=?2`).bind(saved.id,user.id).all<Job>()).results??[];
-    const response=json({ok:true,requestId:saved.id,results:result.map(publicJob)},result.some(row=>['pending','processing'].includes(row.status))?202:200);
+    const result: Job[] = (((await env.DB.prepare(`SELECT * FROM publication_jobs WHERE request_id=?1 AND user_id=?2`).bind(saved.id,user.id).all<Job>()).results ?? []) as Job[]);
+    const response=json({ok:true,requestId:saved.id,results:result.map(publicJob)},result.some((row: Job)=>['pending','processing'].includes(row.status))?202:200);
     if(response.status===202)response.headers.set('Retry-After','10');
     return response;
   }catch(error){
