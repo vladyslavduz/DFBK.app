@@ -16,6 +16,8 @@ import { handleIntegrations } from './routes/integrations';
 import { handleBilling } from './routes/billing';
 import { handleProfile } from './routes/profile';
 import { handleEmail } from './routes/email';
+import { handleSocial } from './routes/social';
+import { handleSocialPublish, handleSocialMedia } from './routes/social-publish';
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -87,6 +89,9 @@ export default {
     }
 
     const response =
+      (await handleSocialMedia(request, env, url.pathname)) ||
+      (await handleSocial(request, env, url.pathname)) ||
+      (await handleSocialPublish(request, env, url.pathname)) ||
       (await handleAdmin(request, env, url.pathname)) ||
       (await handleAuth(request, env, url.pathname)) ||
       (await handleEntitlements(request, env, url.pathname)) ||
