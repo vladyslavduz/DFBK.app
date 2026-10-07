@@ -11,8 +11,10 @@ export function publicConnection(row: Connection) {
     status:expired&&row.status==='connected'?'reconnect_required':row.status,connected:row.status==='connected'&&!expired,expiresAt:row.token_expires_at};
 }
 export async function connections(env: Env, userId: string) {
-  const rows = socialConfigured(env) ? (await env.DB.prepare(`SELECT * FROM social_connections WHERE user_id=?1 AND status <> 'disconnected'
-    ORDER BY CASE WHEN status='connected' THEN 0 ELSE 1 END,updated_at DESC,id DESC LIMIT 200`).bind(userId).all<Connection>()).results : [];
+  const rows: Connection[] = socialConfigured(env)
+    ? (((await env.DB.prepare(`SELECT * FROM social_connections WHERE user_id=?1 AND status <> 'disconnected'
+    ORDER BY CASE WHEN status='connected' THEN 0 ELSE 1 END,updated_at DESC,id DESC LIMIT 200`).bind(userId).all<Connection>()).results ?? []) as Connection[])
+    : [];
   return PROVIDERS.map(provider=>{
     const accounts=(rows??[]).filter(row=>row.provider===provider).map(publicConnection);
     const active=accounts.find(row=>row.connected);
