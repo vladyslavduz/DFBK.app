@@ -80,6 +80,8 @@ export default function AppIntegrationsPage() {
         {providers.map(provider => {
           const connection = connectionForProvider(connections, provider.id);
           const isMeta = provider.id === 'instagram' || provider.id === 'facebook';
+          const metaProvider: 'instagram' | 'facebook' | null =
+            provider.id === 'instagram' || provider.id === 'facebook' ? provider.id : null;
           const pendingAccounts = connection?.accounts.filter(account => account.status === 'pending') || [];
           const showCandidates = socialHint === 'select_account' && providerHint === provider.id && pendingAccounts.length > 0;
 
@@ -98,7 +100,7 @@ export default function AppIntegrationsPage() {
                 <div className="social-account-list">
                   <strong>Konto auswählen</strong>
                   {pendingAccounts.map(account => (
-                    <button type="button" onClick={() => void choose(provider.id, account.connectionId)} key={account.connectionId}>
+                    <button type="button" onClick={() => void choose(metaProvider!, account.connectionId)} key={account.connectionId}>
                       <span>{account.accountName}</span>
                       <small>Auswählen</small>
                     </button>
@@ -108,13 +110,13 @@ export default function AppIntegrationsPage() {
 
               <div className="social-connection-actions">
                 {isMeta && connection?.availability === 'available' && connection.status === 'reconnect_required' && !showCandidates && (
-                  <button className="button" type="button" onClick={() => connect(provider.id)}>Erneut verbinden</button>
+                  <button className="button" type="button" onClick={() => connect(metaProvider!)}>Erneut verbinden</button>
                 )}
                 {isMeta && connection?.availability === 'available' && connection.status === 'not_connected' && !showCandidates && (
-                  <button className="button" type="button" onClick={() => connect(provider.id)}>Verbinden</button>
+                  <button className="button" type="button" onClick={() => connect(metaProvider!)}>Verbinden</button>
                 )}
                 {isMeta && connection?.connected && (
-                  <button className="button button-secondary" type="button" onClick={() => void remove(provider.id)}>Verbindung trennen</button>
+                  <button className="button button-secondary" type="button" onClick={() => void remove(metaProvider!)}>Verbindung trennen</button>
                 )}
                 {(!connection || connection.availability !== 'available') && <span className="mvp-integration-status">{availabilityText(provider.id, connection?.availability)}</span>}
               </div>
