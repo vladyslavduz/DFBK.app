@@ -80,7 +80,8 @@ export default function AppIntegrationsPage() {
         {providers.map(provider => {
           const connection = connectionForProvider(connections, provider.id);
           const isMeta = provider.id === 'instagram' || provider.id === 'facebook';
-          const metaProvider: 'instagram' | 'facebook' | null = isMeta ? provider.id : null;
+          const metaProvider: 'instagram' | 'facebook' | null =
+            provider.id === 'instagram' || provider.id === 'facebook' ? provider.id : null;
           const pendingAccounts = connection?.accounts.filter(account => account.status === 'pending') || [];
           const showCandidates = socialHint === 'select_account' && providerHint === provider.id && pendingAccounts.length > 0;
 
