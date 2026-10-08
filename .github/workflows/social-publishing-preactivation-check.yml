@@ -1,0 +1,34 @@
+name: Social Publishing Pre-Activation Acceptance
+
+on:
+  push:
+    branches:
+      - check/social-publishing-preactivation-e2e
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install
+        run: npm ci
+      - name: Build
+        run: npm run build
+      - name: Tests
+        run: node --test tests/*.test.mjs
+      - name: Diff check
+        run: git diff --check origin/main...HEAD
+      - name: Frontend secret scan
+        run: |
+          ! grep -R "META_APP_SECRET\|SOCIAL_TOKEN_ENCRYPTION_KEY\|SOCIAL_MEDIA_SIGNING_KEY\|graph.facebook.com" dist
+      - name: Frontend source secret scan
+        run: |
+          ! grep -R "META_APP_SECRET\|SOCIAL_TOKEN_ENCRYPTION_KEY\|SOCIAL_MEDIA_SIGNING_KEY" src
