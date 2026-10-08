@@ -29,7 +29,11 @@
   "vars": {
     "EMAIL_FROM": "DFBK.app <noreply@auth.dfbk.app>",
     "GOOGLE_CLIENT_ID": "1042544046802-b4ajqujncpjjba3o308n4v0ramlo8nif.apps.googleusercontent.com",
-    "GOOGLE_REDIRECT_URI": "https://dfbk.app/api/auth/google/callback"
+    "GOOGLE_REDIRECT_URI": "https://dfbk.app/api/auth/google/callback",
+    "META_APP_ID": "1339867144748655",
+    "META_GRAPH_VERSION": "v26.0",
+    "SOCIAL_ENABLED": "false",
+    "SOCIAL_PUBLIC_ORIGIN": "https://dfbk.app"
   },
 
   "observability": {
