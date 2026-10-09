@@ -57,6 +57,7 @@ export async function handleSocial(request: Request, env: Env, pathname: string)
       if(!used.meta.changes)return json({ok:false,error:'INVALID_OAUTH_STATE'},400);
       if(url.searchParams.has('error'))return redirectResult(env,provider,'cancelled');
       const code=url.searchParams.get('code');if(!code||code.length>4096)return redirectResult(env,provider,'failed');
+      let stage='account_discovery';
       try {
         const discovered=await discoverMetaAccounts(env,provider as 'instagram'|'facebook',code);
         if(!discovered.length)return redirectResult(env,provider,'no_accounts');
@@ -71,9 +72,14 @@ export async function handleSocial(request: Request, env: Env, pathname: string)
             .bind(crypto.randomUUID(),user.id,provider,account.id,account.name,await encryptToken(env,account.token,connectionContext(user.id,provider,account.id)),account.expiresAt,JSON.stringify(account.scopes),await digest(state)));
         }
         // D1 statement limits vary; bounded discovery, batches below platform limit.
+        stage='connection_persistence';
         for(let start=0;start<statements.length;start+=40)await env.DB.batch(statements.slice(start,start+40));
         return redirectResult(env,provider,'select_account');
-      }catch(error){return redirectResult(env,provider,error instanceof SocialError&&error.code==='SOCIAL_PERMISSION_REQUIRED'?'permission_required':'failed');}
+      }catch(error){
+        // Log fixed stage/code labels only. OAuth codes, tokens and provider error bodies stay private.
+        console.error('SOCIAL_OAUTH_CALLBACK_FAILED',provider,stage,error instanceof SocialError?error.code:'UNEXPECTED');
+        return redirectResult(env,provider,error instanceof SocialError&&error.code==='SOCIAL_PERMISSION_REQUIRED'?'permission_required':'failed');
+      }
     }
     if((action==='disconnect'||action==='select')&&request.method==='POST') {
       const guard=requireSameOriginMutation(request);if(guard)return guard;
