@@ -9,20 +9,29 @@ export function metaId(value: unknown): string {
 export async function metaRequest(env: Env, path: string, token: string | null, method = 'GET', fields: Record<string,string> = {}, publishing = false): Promise<MetaObject> {
   const url = new URL(`https://graph.facebook.com/${env.META_GRAPH_VERSION}/${path}`);
   const form = new URLSearchParams(fields);
+  const diagnosticPath = ['oauth/access_token','me/permissions','me/accounts'].includes(path) ? path : null;
   const headers: Record<string,string> = {};
   if (token) headers.Authorization = `Bearer ${token}`;
   if (method === 'GET') url.search = form.toString();
   else headers['Content-Type'] = 'application/x-www-form-urlencoded';
   let response: Response;
   try { response = await fetch(url,{method,headers,body:method==='GET'?undefined:form,signal:AbortSignal.timeout(20_000),redirect:'error'}); }
-  catch { throw new SocialError(publishing ? 'SOCIAL_PUBLICATION_OUTCOME_UNKNOWN' : 'SOCIAL_PROVIDER_UNAVAILABLE',publishing); }
+  catch {
+    if (diagnosticPath) console.error('SOCIAL_META_NETWORK_FAILED',diagnosticPath);
+    throw new SocialError(publishing ? 'SOCIAL_PUBLICATION_OUTCOME_UNKNOWN' : 'SOCIAL_PROVIDER_UNAVAILABLE',publishing);
+  }
   let body: MetaObject;
   try { body = await response.json() as MetaObject; }
-  catch { throw new SocialError(publishing ? 'SOCIAL_PUBLICATION_OUTCOME_UNKNOWN' : 'SOCIAL_PROVIDER_UNAVAILABLE',publishing); }
+  catch {
+    if (diagnosticPath) console.error('SOCIAL_META_INVALID_RESPONSE',diagnosticPath,response.status);
+    throw new SocialError(publishing ? 'SOCIAL_PUBLICATION_OUTCOME_UNKNOWN' : 'SOCIAL_PROVIDER_UNAVAILABLE',publishing);
+  }
   if (!body || typeof body !== 'object' || Array.isArray(body)) throw new SocialError(publishing?'SOCIAL_PUBLICATION_OUTCOME_UNKNOWN':'SOCIAL_PROVIDER_UNAVAILABLE',publishing);
   if (!response.ok || body.error) {
     if (response.status >= 500 && publishing) throw new SocialError('SOCIAL_PUBLICATION_OUTCOME_UNKNOWN',true);
     const code = body.error?.code;
+    // Only endpoint label and numeric Meta status codes; never log response bodies or credentials.
+    if (diagnosticPath) console.error('SOCIAL_META_API_FAILED',diagnosticPath,response.status,Number.isInteger(code)?code:'UNKNOWN');
     if (code === 190) throw new SocialError('SOCIAL_TOKEN_EXPIRED');
     if ([10,200,294].includes(code)) throw new SocialError('SOCIAL_PERMISSION_REQUIRED');
     if ([4,17,32,613].includes(code) || response.status === 429) throw new SocialError('SOCIAL_RATE_LIMITED');
