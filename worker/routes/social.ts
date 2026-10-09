@@ -61,6 +61,7 @@ export async function handleSocial(request: Request, env: Env, pathname: string)
       try {
         const discovered=await discoverMetaAccounts(env,provider as 'instagram'|'facebook',code);
         if(!discovered.length)return redirectResult(env,provider,'no_accounts');
+        stage='connection_persistence';
         const statements=[];
         for(const account of discovered) {
           statements.push(env.DB.prepare(`INSERT INTO social_connections(id,user_id,provider,external_account_id,external_account_name,access_token_encrypted,token_expires_at,scopes,status)
@@ -72,7 +73,6 @@ export async function handleSocial(request: Request, env: Env, pathname: string)
             .bind(crypto.randomUUID(),user.id,provider,account.id,account.name,await encryptToken(env,account.token,connectionContext(user.id,provider,account.id)),account.expiresAt,JSON.stringify(account.scopes),await digest(state)));
         }
         // D1 statement limits vary; bounded discovery, batches below platform limit.
-        stage='connection_persistence';
         for(let start=0;start<statements.length;start+=40)await env.DB.batch(statements.slice(start,start+40));
         return redirectResult(env,provider,'select_account');
       }catch(error){
