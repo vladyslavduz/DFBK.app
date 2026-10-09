@@ -96,13 +96,22 @@ function Datenschutz() {
         </section>
 
         <section>
+          <h2>Social Publishing mit Facebook und Instagram</h2>
+          <p>Wenn du ein Facebook- oder Instagram-Konto ausdrücklich mit DFBK.app verbindest, leiten wir dich zur Anmeldung und Freigabe an Meta weiter. Die Anmeldung bei DFBK.app selbst erfolgt weiterhin über dein bestehendes DFBK.app-Konto. Wir fragen dein Facebook- oder Instagram-Passwort nicht ab.</p>
+          <p>Für die Verbindung verarbeiten wir die Kennung und den Namen der von dir ausgewählten Facebook-Seite oder des verbundenen professionellen Instagram-Kontos, gewährte Berechtigungen, Verbindungsstatus und Ablaufzeit sowie Zugriffstoken. Die Token werden serverseitig verschlüsselt in Cloudflare D1 gespeichert und nicht an dein Browser-Frontend ausgegeben. Während der Kontenauswahl können auch noch nicht ausgewählte berechtigte Konten als Verbindungskandidaten gespeichert werden; beim Trennen werden auch deren Token entfernt.</p>
+          <p>Erst wenn du einen Beitrag ausdrücklich bestätigst, übermitteln wir das gewählte Projektbild und den von dir geprüften Text an die ausgewählte Plattform. Zur Übermittlung kann Meta das konkrete Bild für kurze Zeit über einen signierten Link abrufen; unser Bildspeicher bleibt privat. In D1 speichern wir den Veröffentlichungsauftrag, den Text, die Bildreferenz, Status und gegebenenfalls die Beitragskennung und den Link zum veröffentlichten Beitrag. Es erfolgt keine automatische Veröffentlichung beim Verbinden.</p>
+          <p>Diese Verarbeitung dient der von dir angeforderten Verbindung und Veröffentlichung (Art. 6 Abs. 1 lit. b DSGVO). Für die Verarbeitung durch Meta gelten zusätzlich deren <a href="https://www.facebook.com/privacy/policy/" target="_blank" rel="noreferrer">Datenschutzinformationen</a>; dabei kann eine Verarbeitung außerhalb des Europäischen Wirtschaftsraums stattfinden.</p>
+          <p>Du kannst die Verbindung unter <a href="/app/integrations">Integrationen</a> trennen. Dabei werden die gespeicherten Verbindungstoken entfernt; bereits veröffentlichte Beiträge auf Facebook oder Instagram und die DFBK.app-Veröffentlichungshistorie werden dadurch nicht automatisch gelöscht. Wie du die Löschung deiner bei DFBK.app gespeicherten Daten anforderst, steht in unserer <a href="/datenloeschung.html">Anleitung zur Datenlöschung</a>.</p>
+        </section>
+
+        <section>
           <h2>8. Empfänger und Übermittlungen in Drittländer</h2>
-          <p>Daten erhalten nur die für den Betrieb erforderlichen Dienstleister, insbesondere Cloudflare, Google bei Nutzung der Google-Anmeldung und Resend beim Versand von Service-E-Mails. Soweit Daten außerhalb des Europäischen Wirtschaftsraums verarbeitet werden, stützen die Anbieter die Übermittlung nach eigenen Angaben insbesondere auf Angemessenheitsbeschlüsse, das EU-US Data Privacy Framework oder EU-Standardvertragsklauseln.</p>
+          <p>Daten erhalten nur die für den Betrieb erforderlichen Dienstleister, insbesondere Cloudflare, Google bei Nutzung der Google-Anmeldung und Resend beim Versand von Service-E-Mails. Bei einer von dir veranlassten Social-Media-Verbindung oder Veröffentlichung erhält auch Meta die dafür erforderlichen Daten. Soweit Daten außerhalb des Europäischen Wirtschaftsraums verarbeitet werden, stützen die Anbieter die Übermittlung nach eigenen Angaben insbesondere auf Angemessenheitsbeschlüsse, das EU-US Data Privacy Framework oder EU-Standardvertragsklauseln.</p>
         </section>
 
         <section>
           <h2>9. Speicherdauer</h2>
-          <p>Wir speichern personenbezogene Daten nur so lange, wie sie für den jeweiligen Zweck erforderlich sind oder gesetzliche Aufbewahrungspflichten bestehen. Kontodaten werden grundsätzlich bis zur Löschung des Kontos gespeichert. Sitzungen laufen regulär nach spätestens 30 Tagen ab und können beim Abmelden beendet werden. Service- und Sicherheitsprotokolle werden nur so lange aufbewahrt, wie dies für Betrieb, Sicherheit und Fehleranalyse erforderlich ist.</p>
+          <p>Wir speichern personenbezogene Daten nur so lange, wie sie für den jeweiligen Zweck erforderlich sind oder gesetzliche Aufbewahrungspflichten bestehen. Kontodaten werden grundsätzlich bis zur Löschung des Kontos gespeichert. Beim Trennen einer Social-Media-Verbindung entfernen wir deren Token; die Veröffentlichungshistorie bleibt zunächst dem DFBK.app-Konto zugeordnet. Sitzungen laufen regulär nach spätestens 30 Tagen ab und können beim Abmelden beendet werden. Service- und Sicherheitsprotokolle werden nur so lange aufbewahrt, wie dies für Betrieb, Sicherheit und Fehleranalyse erforderlich ist.</p>
         </section>
 
         <section>
@@ -116,7 +125,7 @@ function Datenschutz() {
             <li>Widerspruch gegen Verarbeitungen auf Grundlage berechtigter Interessen,</li>
             <li>Widerruf einer erteilten Einwilligung mit Wirkung für die Zukunft.</li>
           </ul>
-          <p>Zur Ausübung deiner Rechte genügt eine E-Mail an <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>.</p>
+          <p>Zur Ausübung deiner Rechte genügt eine E-Mail an <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>. Für Löschungsanfragen zu Meta-Verbindungen findest du weitere Schritte unter <a href="/datenloeschung.html">Datenlöschung</a>.</p>
         </section>
 
         <section>
@@ -129,7 +138,7 @@ function Datenschutz() {
           <p>Wir setzen angemessene technische und organisatorische Maßnahmen ein, um personenbezogene Daten zu schützen. Diese Datenschutzerklärung wird angepasst, wenn sich Funktionen, Dienstleister oder gesetzliche Anforderungen ändern. Zusätzliche Datenverarbeitungen werden erst nach entsprechender Aktualisierung dieser Informationen produktiv eingesetzt.</p>
         </section>
 
-        <p className="legal-updated">Stand: 19. September 2026</p>
+        <p className="legal-updated">Stand: 9. Oktober 2026</p>
       </article>
     </PageShell>
   );
