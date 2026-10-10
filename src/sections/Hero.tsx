@@ -16,7 +16,7 @@ export default function Hero() {
         <div className="hero-showcase">
           <iframe
             src="/visual/dfbk-showcase/index.html?embed=1"
-            title="So verwandelt DFBK Arbeitsfotos in neue Kundenanfragen"
+            title="So verwandelt DFBK Arbeitsfotos in fertigen Marketing-Content"
             loading="eager"
           />
         </div>
