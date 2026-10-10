@@ -105,7 +105,7 @@ export default function IntegrationsPage() {
   async function copyForWebsite() {
     try {
       await navigator.clipboard.writeText(demoText);
-      setFeedback('Text für deine Website kopiert.');
+      setFeedback('Beispieltext kopiert.');
     } catch {
       setFeedback('Kopieren wird in diesem Browser nicht unterstützt.');
     }
@@ -167,8 +167,8 @@ export default function IntegrationsPage() {
 
           <article className="mvp-integration-card">
             <img src={`${localIcons}/website.svg`} alt="" />
-            <div><strong>Deine Website</strong><span>Content für deine eigene Website verwenden.</span></div>
-            <button type="button" onClick={() => void copyForWebsite()}>Für Website verwenden</button>
+            <div><strong>Deine Website</strong><span>Beispieltext ansehen und für deine Website weiterverwenden.</span></div>
+            <button type="button" onClick={() => void copyForWebsite()}>Beispieltext kopieren</button>
           </article>
         </div>
 
