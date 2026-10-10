@@ -4,7 +4,6 @@ import Hero from '../sections/Hero';
 import Benefits from '../sections/Benefits';
 import Features from '../sections/Features';
 import HowItWorks from '../sections/HowItWorks';
-import Testimonials from '../sections/Testimonials';
 import Pricing from '../sections/Pricing';
 import Footer from '../components/Footer';
 
@@ -38,5 +37,5 @@ export default function HomePage() {
     return () => observer.disconnect();
   }, []);
 
-  return <><Header /><main ref={mainRef}><Hero /><Benefits /><Features /><HowItWorks /><Testimonials /><Pricing /></main><Footer /></>;
+  return <><Header /><main ref={mainRef}><Hero /><Benefits /><Features /><HowItWorks /><Pricing /></main><Footer /></>;
 }
