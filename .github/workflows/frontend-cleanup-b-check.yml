@@ -1,0 +1,42 @@
+name: Frontend Cleanup B Check
+
+on:
+  push:
+    branches:
+      - fix/frontend-mvp-consistency-b
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install
+        run: npm ci
+      - name: Build
+        run: npm run build
+      - name: Tests
+        run: node --test tests/*.test.mjs
+      - name: Diff check
+        run: git diff --check origin/main...HEAD
+      - name: Frozen Social Publishing files unchanged
+        run: |
+          changed="$(git diff --name-only origin/main...HEAD)"
+          ! printf '%s\n' "$changed" | grep -E '(^|/)(AppIntegrationsPage\.tsx|SocialPublishModal\.tsx|SocialPublishingContext\.tsx|services/social\.ts|worker/|database/)'
+      - name: Cleanup B stale copy check
+        run: |
+          ! grep -R -E "neue Kundenanfragen|von deiner Arbeit zu mehr Kunden|erreiche neue Kunden|maxLength=\{240\}|Für Website verwenden|Änderungen gelten nur lokal bis zum Neuladen der Seite|Möchtest du noch etwas ergänzen\?" src
+      - name: Required replacement copy check
+        run: |
+          grep -q "fertigen Marketing-Content" src/sections/Hero.tsx
+          grep -q "fertigem Marketing-Content" src/sections/HowItWorks.tsx
+          grep -q "maxLength={120}" src/components/ProjectRename.tsx
+          grep -q "Beispieltext kopieren" src/pages/IntegrationsPage.tsx
+          grep -q "Möchtest du etwas ergänzen?" src/components/DescriptionInput.tsx
