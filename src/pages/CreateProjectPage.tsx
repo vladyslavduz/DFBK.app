@@ -158,7 +158,7 @@ export default function CreateProjectPage() {
       {step === 3 && <ProcessingState includesPhotoOptimization error={submitError} retrying={submitting} onRetry={finishProcessing} onChangePhoto={createdProjectRef.current && createdProjectRef.current.photoOptimization.state !== 'available' ? undefined : () => { setSubmitError(''); setStep(1); }} />}
       {step === 4 && project?.content && (
         <section className="wizard-result">
-          <header className="wizard-heading center"><span className="result-check"><AppIcon name="check" /></span><span className="app-kicker">Schritt 4</span><h1>Dein Content ist fertig</h1><p>Du kannst die Texte direkt verwenden oder noch bearbeiten.</p></header>
+          <header className="wizard-heading center"><span className="result-check"><AppIcon name="check" /></span><span className="app-kicker">Schritt 4</span><h1>Dein Content ist fertig</h1><p>Kopiere, lade herunter oder teile deinen fertigen Content direkt weiter.</p></header>
 
           <ProjectImageViewer
             projectId={project.id}
@@ -172,7 +172,7 @@ export default function CreateProjectPage() {
 
           <div className="result-photo-summary"><div><span className={`project-status status-${project.status}`}><AppIcon name="check" />{projectStatusLabel(project.status)}</span><h2>{project.title}</h2>{project.description && <p>{project.description}</p>}</div></div>
           <div className="channel-list">{(['google', 'social', 'website'] as const).map(channel => <ChannelCard channel={channel} value={project.content?.[channel] || ''} onChange={value => updateContent(project.id, channel, value)} projectId={project.id} projectTitle={project.title} downloadImage={project.optimizedImage || project.originalImage} key={channel} />)}</div>
-          <div className="visibility-panel"><div><span className="app-kicker">Sichtbar werden</span><h2>Bereit für deine Kanäle</h2><p>Text kopieren und die gewünschte Bildversion dort einsetzen, wo deine Kunden dich finden.</p></div><div className="channel-pills"><span>Google</span><span>Website</span><span>Instagram</span><span>Facebook</span></div></div>
+          <div className="visibility-panel"><div><span className="app-kicker">Sichtbar werden</span><h2>Bereit für deine Kanäle</h2><p>Kopiere, lade herunter oder teile deinen fertigen Content für Website, Google und Social Media.</p></div><div className="channel-pills"><span>Google</span><span>Website</span><span>Instagram</span><span>Facebook</span></div></div>
           <div className="wizard-result-actions"><AppLink className="button" to={`/app/projects/${project.id}`}>Projekt öffnen<AppIcon name="arrow" /></AppLink><AppLink className="button button-secondary" to="/app">Zur Übersicht</AppLink></div>
         </section>
       )}

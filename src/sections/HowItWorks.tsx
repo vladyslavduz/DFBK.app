@@ -26,7 +26,7 @@ const steps = [
   {
     number: '05',
     title: 'Sichtbar werden',
-    description: 'Nutze deine fertigen Inhalte für Website, Google und Social Media – und erreiche neue Kunden.',
+    description: 'Nutze deine fertigen Inhalte für Website, Google und Social Media – und mach deine Arbeit dort sichtbar, wo Kunden suchen.',
     image: '/visual/ablauf/05-sichtbar-werden.webp'
   }
 ];
@@ -38,7 +38,7 @@ export default function HowItWorks() {
         <header className="process-heading">
           <span className="eyebrow">Ablauf</span>
           <h2>So funktioniert DFBK.app</h2>
-          <p>In 5 einfachen Schritten von deiner Arbeit zu mehr Kunden.</p>
+          <p>In 5 einfachen Schritten von deiner Arbeit zu fertigem Marketing-Content.</p>
         </header>
 
         <ol className="process-steps">

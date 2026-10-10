@@ -134,7 +134,7 @@ export default function DescriptionInput({ value, onChange, onBack, onContinue }
         <div className="optional-context-heading">
           <div>
             <span className="app-kicker">Optional</span>
-            <h1 id="optional-context-title">Möchtest du noch etwas ergänzen?</h1>
+            <h1 id="optional-context-title">Möchtest du etwas ergänzen?</h1>
             <p id="optional-context-copy">DFBK.app erkennt deine Arbeit auf dem Foto. Ergänze nur, was nicht sichtbar ist.</p>
           </div>
           <button className="optional-context-close" type="button" onClick={onBack} aria-label="Zurück zum Foto">×</button>

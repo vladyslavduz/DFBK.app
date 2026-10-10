@@ -92,7 +92,7 @@ export default function ProjectRename({ projectId, title, onRenamed, compact = f
 
   return (
     <div className="project-rename-editor" onClick={event => event.stopPropagation()}>
-      <input ref={inputRef} value={value} onChange={event => setValue(event.target.value)} onKeyDown={onKeyDown} disabled={saving} maxLength={240} aria-label="Projektname" />
+      <input ref={inputRef} value={value} onChange={event => setValue(event.target.value)} onKeyDown={onKeyDown} disabled={saving} maxLength={120} aria-label="Projektname" />
       <div className="project-rename-actions">
         <button className="button button-secondary" type="button" onClick={cancel} disabled={saving}>Abbrechen</button>
         <button className="button" type="button" onClick={() => void save()} disabled={saving}>{saving ? 'Speichert …' : 'Speichern'}</button>
