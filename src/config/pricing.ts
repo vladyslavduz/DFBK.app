@@ -43,17 +43,18 @@ export const pricingConfig = {
       eyebrow: 'ZUM KENNENLERNEN',
       name: 'Ausprobieren',
       value: 'Sieh zuerst, was DFBK.app aus deiner Arbeit macht.',
-      description: 'Lade ein eigenes Foto hoch und teste DFBK.app mit bis zu zwei eigenen Projekten.',
+      description: 'Lade ein eigenes Foto hoch und teste DFBK.app mit bis zu fünf eigenen Projekten.',
       audience: 'Für deinen ersten Eindruck.',
       price: null,
       billingPeriod: null,
-      projectLimit: 2,
+      projectLimit: 5,
       features: [
-        { label: '2 Projekte kostenlos ausprobieren', availability: 'available' },
+        { label: '5 Projekte kostenlos ausprobieren', availability: 'available' },
         { label: 'Eigenes Foto verwenden', availability: 'available' },
         { label: 'Optionale Zusatzinfo ergänzen', availability: 'available' },
         { label: 'Inhalte von DFBK.app erstellen lassen', availability: 'available' },
         { label: 'Ergebnis direkt ansehen', availability: 'available' },
+        { label: 'Inhalte direkt über das System-Menü teilen', availability: 'available' },
       ],
       cta: 'Kostenlos ausprobieren',
       ctaTo: '/register',
@@ -62,9 +63,9 @@ export const pricingConfig = {
     {
       id: 'pro',
       eyebrow: 'FÜR DEN ALLTAG',
-      name: 'DFBK Pro',
+      name: 'Business',
       value: 'Für Betriebe, die ihre Arbeit regelmäßig sichtbar machen wollen.',
-      description: 'Der Pro-Zugang ist für die laufende Nutzung ohne Projektlimit vorgesehen. Preis und Zahlungsmodell werden vor dem Bezahlstart festgelegt.',
+      description: 'Der Business-Zugang ist für die laufende Nutzung ohne Projektlimit vorgesehen. Preis und Zahlungsmodell werden vor dem Bezahlstart festgelegt.',
       audience: 'Für deinen laufenden Marketing-Alltag.',
       badge: 'BELIEBT',
       // BUSINESS TODO: insert the approved price here. Do not invent a public price.
@@ -82,7 +83,7 @@ export const pricingConfig = {
         { label: 'Inhalte direkt über das System-Menü teilen', availability: 'available' },
         { label: 'Direkte Business-Integrationen', availability: 'planned' },
       ],
-      // Until billing exists, do not pretend that Pro can already be purchased.
+      // Until billing exists, do not pretend that Business can already be purchased.
       cta: 'Zuerst ausprobieren',
       ctaTo: '/register',
       // BUSINESS TODO: replace with cancellation copy only after subscription terms are approved.
@@ -92,15 +93,15 @@ export const pricingConfig = {
   faq: [
     {
       question: 'Kann ich DFBK.app zuerst ausprobieren?',
-      answer: 'Ja. Mit dem Testzugang kannst du zwei eigene Projekte kostenlos erstellen und den kompletten Ablauf kennenlernen.',
+      answer: 'Ja. Mit dem Testzugang kannst du bis zu fünf eigene Projekte kostenlos erstellen und den kompletten Ablauf kennenlernen.',
     },
     {
       question: 'Was passiert nach dem Test?',
-      answer: 'Nach zwei Testprojekten entscheidest du, ob du mit DFBK Pro weitermachen möchtest. Der genaue Upgrade-Ablauf wird mit dem Billing-Modell fertiggestellt.',
+      answer: 'Nach fünf Testprojekten entscheidest du, ob du mit Business weitermachen möchtest. Der genaue Upgrade-Ablauf wird mit dem Billing-Modell fertiggestellt.',
     },
     {
       question: 'Muss ich sofort einen Tarif wählen?',
-      answer: 'Nein. Du kannst zuerst zwei Projekte mit dem Testzugang erstellen.',
+      answer: 'Nein. Du kannst zuerst bis zu fünf Projekte mit dem Testzugang erstellen.',
     },
     {
       question: 'Kann ich meinen Tarif später ändern?',
