@@ -77,7 +77,7 @@ export default function IntegrationsPage() {
   function openPlatform(platform: IntegrationPlatform) {
     setFeedback('');
     if (!shareEnabled) {
-      setFeedback('Direktes Teilen ist im Business-Tarif verfügbar.');
+      setFeedback('Direktes Teilen ist mit einem aktiven DFBK-Zugang und einem fertigen Projekt verfügbar.');
       return;
     }
     if (!socialText) {
@@ -158,7 +158,7 @@ export default function IntegrationsPage() {
                 type="button"
                 onClick={() => openPlatform(card.platform)}
                 disabled={!shareEnabled || !socialText}
-                title={!shareEnabled ? 'Business-Tarif erforderlich' : !socialText ? 'Kein fertiger Social-Media-Text verfügbar' : undefined}
+                title={!shareEnabled ? 'Aktiver DFBK-Zugang erforderlich' : !socialText ? 'Kein fertiger Social-Media-Text verfügbar' : undefined}
               >
                 {card.button}
               </button>
