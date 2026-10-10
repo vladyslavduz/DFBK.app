@@ -120,7 +120,7 @@ export default function ChannelCard({ channel, value, onChange, projectId, proje
         )}
 
         {editing
-          ? <><textarea value={displayedValue} onChange={event => updateDraft(event.target.value)} /><small className="channel-edit-note">{channel === 'social' ? 'Diese Änderung gilt nur für den Veröffentlichungsentwurf.' : 'Änderungen gelten nur lokal bis zum Neuladen der Seite.'}</small></>
+          ? <><textarea value={displayedValue} onChange={event => updateDraft(event.target.value)} /><small className="channel-edit-note">{channel === 'social' ? 'Diese Änderung gilt nur für den Veröffentlichungsentwurf.' : 'Diese Änderung wird nicht dauerhaft gespeichert und ist nach dem Neuladen nicht mehr vorhanden.'}</small></>
           : <p>{displayedValue}</p>}
 
         <div className={`channel-actions${channel === 'social' ? ' social-channel-actions' : ''}`}>
