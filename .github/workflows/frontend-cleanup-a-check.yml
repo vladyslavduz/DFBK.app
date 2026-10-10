@@ -32,7 +32,7 @@ jobs:
           ! printf '%s\n' "$changed" | grep -E '(^|/)(AppIntegrationsPage\.tsx|SocialPublishModal\.tsx|SocialPublishingContext\.tsx|services/social\.ts|worker/|database/)'
       - name: P0 stale user copy search
         run: |
-          ! grep -R -E "2 Projekte|zwei Projekte|zwei eigenen Projekten|DFBK Pro|Business-Tarif erforderlich|Testkunde" src --exclude='Testimonials.tsx'
+          ! grep -R -E "(^|[^0-9])2 Projekte|zwei Projekte|zwei eigenen Projekten|DFBK Pro([^j]|$)|Business-Tarif erforderlich|Testkunde" src --exclude='Testimonials.tsx'
       - name: Auth fake action search
         run: |
           ! grep -R -E "Reset-Link anfordern|Die Oberfläche ist bereit|Die erneute Zustellung wird nach dem Backend-Anschluss aktiviert" src
