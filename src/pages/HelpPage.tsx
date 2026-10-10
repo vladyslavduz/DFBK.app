@@ -22,7 +22,7 @@ export default function HelpPage() {
           <span>3</span>
           <div>
             <h3>Wie verwende ich das Ergebnis?</h3>
-            <p>Du kannst Texte kopieren, Bilder herunterladen und im Business-Zugang das native Teilen-Menü deines Geräts verwenden. Direkte automatische Veröffentlichungen zu Google oder Meta sind im aktuellen MVP noch nicht aktiv.</p>
+            <p>Du kannst Texte kopieren, Bilder herunterladen und mit einem aktiven DFBK-Zugang das native Teilen-Menü deines Geräts verwenden. Direkte automatische Veröffentlichungen zu Google oder Meta sind im aktuellen MVP noch nicht aktiv.</p>
           </div>
         </article>
       </div>
