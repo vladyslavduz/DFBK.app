@@ -32,6 +32,15 @@ import {
   exchangeGoogleCode,
   fetchGoogleUser,
 } from '../lib/google-oauth';
+import {
+  MicrosoftOAuthError,
+  clearMicrosoftCookie,
+  startMicrosoft,
+  verifyMicrosoftAttempt,
+  exchangeMicrosoftCode,
+  validateMicrosoftIdentity,
+  fetchMicrosoftProfile,
+} from '../lib/microsoft-oauth';
 
 
 type RegisterBody = {
@@ -58,6 +67,7 @@ type GoogleDbUser = {
   email: string;
   email_verified: number;
   google_sub: string | null;
+  microsoft_sub: string | null;
 };
 
 type CreatedSession = {
@@ -160,6 +170,8 @@ function redirectWithCookies(
 ): Response {
   const headers = new Headers();
   headers.set('Location', location);
+  headers.set('Cache-Control', 'no-store');
+  headers.set('Referrer-Policy', 'no-referrer');
 
   for (const cookie of cookies) {
     headers.append('Set-Cookie', cookie);
@@ -259,6 +271,14 @@ export async function handleAuth(
     request.method === 'GET'
   ) {
     return googleCallback(request, env);
+  }
+
+  if (pathname === '/api/auth/microsoft' && request.method === 'GET') {
+    return startMicrosoftAuth(request, env);
+  }
+
+  if (pathname === '/api/auth/microsoft/callback' && request.method === 'GET') {
+    return microsoftCallback(request, env);
   }
 
   if (
@@ -851,7 +871,8 @@ async function googleCallback(
           id,
           email,
           email_verified,
-          google_sub
+          google_sub,
+          microsoft_sub
         FROM users
         WHERE google_sub = ?1
         LIMIT 1
@@ -868,7 +889,8 @@ async function googleCallback(
             id,
             email,
             email_verified,
-            google_sub
+            google_sub,
+            microsoft_sub
           FROM users
           WHERE email = ?1
           LIMIT 1
@@ -878,6 +900,14 @@ async function googleCallback(
         .first<GoogleDbUser>();
 
       if (emailUser) {
+        // A Microsoft profile email can be unverified. Never merge its account
+        // into a Google identity by matching that unverified address.
+        if (emailUser.microsoft_sub && emailUser.email_verified !== 1) {
+          return redirectWithCookies(
+            buildGoogleResultUrl(request, 'error', 'account_link_required'),
+            [clearGoogleStateCookie()]
+          );
+        }
         if (
           emailUser.google_sub &&
           emailUser.google_sub !== googleUser.sub
@@ -950,6 +980,7 @@ async function googleCallback(
           email,
           email_verified: 1,
           google_sub: googleUser.sub,
+          microsoft_sub: null,
         };
       }
     }
@@ -986,6 +1017,114 @@ async function googleCallback(
       ),
       [clearGoogleStateCookie()]
     );
+  }
+}
+
+/* =========================================================
+ * MICROSOFT OAUTH — identity is the signed (tenant, subject), never email.
+ * Existing email accounts can be linked only from an authenticated session.
+ * ========================================================= */
+
+function microsoftResult(request: Request, result: 'success' | 'error', reason?: string): string {
+  const url = new URL('/', request.url);
+  url.searchParams.set('auth', `microsoft_${result}`);
+  if (reason) url.searchParams.set('reason', reason);
+  return url.toString();
+}
+
+async function startMicrosoftAuth(request: Request, env: Env): Promise<Response> {
+  const link = new URL(request.url).searchParams.get('link') === '1';
+  let sessionToken: string | undefined;
+  let linkingUserId: string | null = null;
+  if (link) {
+    const referer = request.headers.get('Referer');
+    const origin = request.headers.get('Origin');
+    let refererOrigin = '';
+    try { refererOrigin = referer ? new URL(referer).origin : ''; } catch {}
+    if (request.headers.get('Sec-Fetch-Site') === 'cross-site' ||
+        (refererOrigin !== new URL(request.url).origin && origin !== new URL(request.url).origin)) {
+      return json({ ok: false, error: 'INVALID_ORIGIN' }, 403);
+    }
+    const user = await requireUser(request, env);
+    if (user instanceof Response) return user;
+    linkingUserId = user.id;
+    sessionToken = getCookie(request, 'dfbk_session') ?? undefined;
+  }
+  try {
+    const attempt = await startMicrosoft(env, link ? 'link' : 'login', sessionToken);
+    await env.DB.prepare(`INSERT INTO microsoft_oauth_states(state_hash,mode,user_id,expires_at)
+      VALUES (?1,?2,?3,datetime('now','+10 minutes'))`)
+      .bind(await hashSessionToken(attempt.state), link ? 'link' : 'login', linkingUserId).run();
+    return redirectWithCookies(attempt.url, [attempt.cookie]);
+  } catch {
+    console.error('MICROSOFT_AUTH_START_FAILED');
+    return json({ ok: false, error: 'MICROSOFT_OAUTH_NOT_CONFIGURED' }, 503);
+  }
+}
+
+async function microsoftCallback(request: Request, env: Env): Promise<Response> {
+  const url = new URL(request.url);
+  const fail = (reason: string) => redirectWithCookies(microsoftResult(request, 'error', reason), [clearMicrosoftCookie()]);
+  const cookie = getCookie(request, 'dfbk_microsoft_oauth');
+  let attempt: Awaited<ReturnType<typeof verifyMicrosoftAttempt>>;
+  try {
+    attempt = await verifyMicrosoftAttempt(env, cookie, url.searchParams.get('state'),
+      getCookie(request, 'dfbk_session') ?? undefined);
+  } catch { return fail('invalid_state'); }
+  let linkingUserId: string | null = null;
+  if (attempt.mode === 'link') {
+    const current = await requireUser(request, env);
+    if (current instanceof Response) return fail('invalid_session');
+    linkingUserId = current.id;
+  }
+  try {
+    const consumed = await env.DB.prepare(`UPDATE microsoft_oauth_states SET consumed_at=CURRENT_TIMESTAMP
+      WHERE state_hash=?1 AND mode=?2 AND user_id IS ?3 AND consumed_at IS NULL AND expires_at>CURRENT_TIMESTAMP`)
+      .bind(await hashSessionToken(attempt.state), attempt.mode, linkingUserId).run();
+    if (!consumed.meta.changes) return fail('invalid_state');
+  } catch { return fail('callback_failed'); }
+  if (url.searchParams.has('error')) return fail('cancelled');
+  const code = url.searchParams.get('code');
+  if (!code || code.length > 4096) return fail('invalid_code');
+
+  try {
+    const { idToken, accessToken } = await exchangeMicrosoftCode(env, code, attempt.verifier);
+    const identity = await validateMicrosoftIdentity(env, idToken, attempt.nonce);
+    const email = await fetchMicrosoftProfile(accessToken, identity);
+    const subject = `${identity.tid.toLowerCase()}:${identity.sub}`;
+    const linked = await env.DB.prepare(`SELECT id FROM users WHERE microsoft_sub=?1 LIMIT 1`)
+      .bind(subject).first<{ id: string }>();
+    let userId: string;
+    if (attempt.mode === 'link') {
+      if (linked && linked.id !== linkingUserId) return fail('account_conflict');
+      if (!linked) {
+        const update = await env.DB.prepare(`UPDATE users SET microsoft_sub=?1 WHERE id=?2 AND microsoft_sub IS NULL`)
+          .bind(subject, linkingUserId).run();
+        if (!update.meta.changes) return fail('account_conflict');
+      }
+      userId = linkingUserId!;
+    } else if (linked) {
+      userId = linked.id;
+    } else {
+      if (!email) return fail('email_unavailable');
+      // Microsoft email/UPN is not proof of ownership of an existing DFBK account.
+      const existing = await env.DB.prepare(`SELECT id FROM users WHERE email=?1 LIMIT 1`)
+        .bind(email).first<{ id: string }>();
+      if (existing) return fail('account_link_required');
+      userId = crypto.randomUUID();
+      await env.DB.prepare(`INSERT INTO users(id,email,password_hash,email_verified,microsoft_sub)
+        VALUES (?1,?2,?3,0,?4)`)
+        .bind(userId, email, `oauth$microsoft$${crypto.randomUUID()}`, subject).run();
+    }
+    const session = await createSessionForUser(env, userId);
+    return redirectWithCookies(microsoftResult(request, 'success'), [
+      clearMicrosoftCookie(), buildSessionCookie(session.token, session.expiresAt),
+    ]);
+  } catch (error) {
+    const reason = error instanceof MicrosoftOAuthError ? error.reason : 'callback_failed';
+    // Fixed reason only: never log authorization codes, identity/access tokens, or provider bodies.
+    console.error('MICROSOFT_CALLBACK_FAILED', reason);
+    return fail(reason);
   }
 }
 

@@ -25,5 +25,7 @@ export async function fixture({ applyProjectTask = true } = {}) {
   const env = { DB: { prepare, async batch(statements) { db.exec('BEGIN'); try { const results = statements.map(s => s.execute()); db.exec('COMMIT'); return results; } catch (e) { db.exec('ROLLBACK'); throw e; } } } };
   for (const migration of ['2026-09-22-projects-v1.sql','2026-09-22-project-media-v1.sql','2026-09-24-generated-contents-v1.sql']) db.exec(readFileSync(new URL('../../database/migrations/' + migration, import.meta.url),'utf8'));
   if (applyProjectTask) db.exec(readFileSync(new URL('../../database/tasks/2026-10-06-project-management-trial-v1.sql', import.meta.url), 'utf8'));
+  // Apply the unapplied Microsoft migration only to the isolated in-memory fixture.
+  db.exec(readFileSync(new URL('../../database/migrations/2026-10-14-microsoft-oauth.sql', import.meta.url), 'utf8'));
   return { db, env };
 }

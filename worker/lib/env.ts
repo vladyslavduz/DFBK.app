@@ -21,6 +21,10 @@ export interface Env {
   GOOGLE_CLIENT_SECRET?: string;
   GOOGLE_REDIRECT_URI?: string;
 
+  MICROSOFT_CLIENT_ID?: string;
+  MICROSOFT_CLIENT_SECRET?: string;
+  MICROSOFT_REDIRECT_URI?: string;
+
   TELEGRAM_BOT_TOKEN?: string;
 
   STRIPE_SECRET_KEY?: string;

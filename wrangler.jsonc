@@ -30,6 +30,8 @@
     "EMAIL_FROM": "DFBK.app <noreply@auth.dfbk.app>",
     "GOOGLE_CLIENT_ID": "1042544046802-b4ajqujncpjjba3o308n4v0ramlo8nif.apps.googleusercontent.com",
     "GOOGLE_REDIRECT_URI": "https://dfbk.app/api/auth/google/callback",
+    "MICROSOFT_CLIENT_ID": "d86e6aa0-5aee-4cab-a67d-86ab861b53e4",
+    "MICROSOFT_REDIRECT_URI": "https://dfbk.app/api/auth/microsoft/callback",
     "META_APP_ID": "1339867144748655",
     "META_GRAPH_VERSION": "v26.0",
     "SOCIAL_ENABLED": "false",
