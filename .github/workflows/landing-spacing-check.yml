@@ -1,0 +1,23 @@
+name: Landing Spacing Check
+on:
+  push:
+    branches: [fix/landing-spacing-hero-20261014]
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: node --test tests/*.test.mjs
+      - run: git diff --check origin/main...HEAD
+      - name: Scope
+        run: |
+          git diff --name-only origin/main...HEAD
+          test "$(git diff --name-only origin/main...HEAD | grep -v -E '^(src/styles/global.css|src/styles/pricing.css|public/visual/dfbk-showcase/styles.css|.github/workflows/landing-spacing-check.yml)$' | wc -l)" -eq 0
