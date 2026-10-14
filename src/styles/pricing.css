@@ -94,22 +94,3 @@
 @media (min-width: 821px) {
   .pricing-v1:not(.pricing-v1-page) .pricing-v1-container { gap: 42px; }
 }
-
-/* Compact desktop tariff comparison without fixed viewport heights or copy changes. */
-@media (min-width: 821px) {
-  .pricing-v1-grid .pricing-v1-card { padding: 26px; }
-  .pricing-v1-grid .pricing-v1-card h3 { margin-top: 13px; margin-bottom: 10px; }
-  .pricing-v1-grid .pricing-v1-price {
-    min-height: 54px;
-    margin-top: 18px;
-    margin-bottom: 2px;
-  }
-  .pricing-v1-grid .pricing-v1-features {
-    gap: 9px;
-    margin-top: 20px;
-  }
-  .pricing-v1-grid .pricing-v1-card-footer {
-    gap: 10px;
-    padding-top: 22px;
-  }
-}
