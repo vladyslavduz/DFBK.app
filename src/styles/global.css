@@ -285,9 +285,9 @@ h3 { letter-spacing: -.02em; }
 }
 
 .site-reveal-item {
-  opacity: .2;
-  filter: blur(7px);
-  transition: opacity .7s ease-out, filter .7s ease-out;
+  opacity: .65;
+  filter: blur(3px);
+  transition: opacity .55s ease-out, filter .55s ease-out;
   will-change: opacity, filter;
 }
 
