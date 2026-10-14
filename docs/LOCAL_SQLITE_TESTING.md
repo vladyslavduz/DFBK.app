@@ -12,17 +12,20 @@ After checking out `fix/local-sqlite-test-runner` (or main after its approved me
 ```powershell
 Set-Location D:\DFBK_app\GitHubClone\DFBK.app
 node --version
-npm --version
-npm ci
-npm run test:local 2>&1 | Tee-Object -FilePath test-local-1.log
+npm.cmd --version
+npm.cmd ci
+if ($LASTEXITCODE -ne 0) { throw "npm ci failed" }
+npm.cmd run test:local 2>&1 | Tee-Object -FilePath test-local-1.log
 $LASTEXITCODE
-npm run test:local 2>&1 | Tee-Object -FilePath test-local-2.log
+npm.cmd run test:local 2>&1 | Tee-Object -FilePath test-local-2.log
 $LASTEXITCODE
-npm run build
+npm.cmd run build
 $LASTEXITCODE
 git diff --check
 git status --short
 ```
+
+Use npm.cmd/npx.cmd explicitly in PowerShell: execution policy may block npm.ps1 before npm or the tests start. Changing the system execution policy is not required.
 
 Inspect the exit code immediately after each command. Both test logs should report
 77 tests, 77 passed, 0 failed, 0 skipped. The five new tests validate the local
@@ -39,7 +42,7 @@ Optional bundling validation **after successful tests/build**, without deploymen
 
 ```powershell
 $env:WRANGLER_SEND_METRICS = 'false'
-npx --no-install wrangler deploy --dry-run --outdir .wrangler/dry-run
+npx.cmd --no-install wrangler deploy --dry-run --outdir .wrangler/dry-run
 ```
 
 Do not run `npm run deploy` for this task. Do not apply production migrations,
@@ -90,13 +93,17 @@ complete emulator of all Cloudflare D1 behavior or SQLite syntax.
 | Deploy script / lockfile / dependency versions | Unchanged |
 | Production / social implementation / PR35 diagnostics | Unchanged |
 | Audit | 5 high findings in dev dependency chains; separate report below |
-| Windows execution | Pending repeat on the user's actual Windows machine |
+| Windows execution | Confirmed: two native Windows runs, 77 PASS / 0 FAIL / 0 SKIP; both exit 0; build exit 0 |
 | PR / merge | Review-only PR; no merge or real deployment authorized |
 
-The execution host was Linux, using the exact Node 22.12.0 binary. This establishes
-the SQLite cause and fix independently of Windows, but does not claim a native
-Windows run. The user should run the PowerShell sequence above for final Windows
-confirmation before Plan & Gemacht decides on merge.
+Initial diagnosis and validation ran on Linux using the exact Node 22.12.0 binary.
+On 2026-10-14 the user also supplied the native PowerShell transcript from
+D:\DFBK_app\GitHubClone\DFBK.app after checking out this branch. It confirms
+77/77 PASS twice (20.90 s and 12.51 s), both exit codes 0, and successful build
+(exit 0, 3.78 s). npm ci succeeded using npm.cmd. The transcript does not reprint
+node --version; the Windows Node 22.12.0/npm 11.0.0 versions are those previously
+reported by the user. Native Windows test/build confirmation is now complete.
+Plan & Gemacht must still decide on merge; no real deployment is authorized.
 
 The dry-run bundled locally and ended with `--dry-run: exiting now`; it did not
 publish a Worker or apply D1/R2 changes. The displayed binding names verify config,
