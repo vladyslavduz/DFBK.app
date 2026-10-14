@@ -784,3 +784,23 @@ h3 { letter-spacing: -.02em; }
   .button-small { padding-inline: 9px; font-size: .76rem; }
   .auth-provider-grid { grid-template-columns: 1fr; }
 }
+
+/* Landing desktop rhythm: keep standard content widths and mobile layout intact. */
+@media (min-width: 761px) {
+  .feature-slider-section,
+  .process-section,
+  .pricing-v1:not(.pricing-v1-page) {
+    padding-top: 64px;
+    padding-bottom: 64px;
+  }
+  .feature-slider-section .feature-list {
+    margin-top: 34px;
+    gap: 28px;
+  }
+  .feature-slider-section .feature-demo-copy h3 { margin-bottom: 13px; }
+  .feature-slider-section .feature-demo-note {
+    margin-top: 21px;
+    padding-top: 13px;
+  }
+  .process-section .process-steps { margin-top: 34px; }
+}

@@ -89,3 +89,8 @@
   .pricing-v1-final-actions, .upgrade-prompt-actions { display: grid; }
   .pricing-v1-final-actions .button, .upgrade-prompt-actions .button { width: 100%; min-height: 48px; }
 }
+
+/* Landing-only pricing rhythm; keep standalone pricing and mobile rules. */
+@media (min-width: 821px) {
+  .pricing-v1:not(.pricing-v1-page) .pricing-v1-container { gap: 42px; }
+}
