@@ -273,3 +273,16 @@
 @media (prefers-reduced-motion: reduce) {
   #dfbk-visual *, #dfbk-visual *::before, #dfbk-visual *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; }
 }
+
+/* Embedded showcase uses the iframe's viewport instead of a second aspect ratio. */
+html:has(body.dfbk-preview-page.is-embedded) { height: 100%; }
+.dfbk-preview-page.is-embedded {
+  height: 100%;
+  min-height: 0;
+}
+.dfbk-preview-page.is-embedded .dfbk-demo-shell { height: 100%; }
+.dfbk-preview-page.is-embedded .dfbk-visual {
+  height: 100%;
+  min-height: 0;
+  aspect-ratio: auto;
+}
