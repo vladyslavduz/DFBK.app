@@ -118,18 +118,7 @@
   box-shadow: 0 6px 16px rgba(16, 42, 67, .08);
 }
 
-.auth-v2-provider-apple {
-  background: #111;
-  border-color: #111;
-  color: #fff;
-}
-
-.auth-v2-provider-apple:hover {
-  background: #000;
-  border-color: #000;
-}
-
-.auth-v2-provider-apple .auth-v2-provider-icon {
+.auth-v2-provider-icon {
   fill: #fff;
 }
 
