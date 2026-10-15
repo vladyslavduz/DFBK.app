@@ -22,4 +22,5 @@ export const authService = {
   me: () => apiRequest<AuthResult & { session: { expiresAt: string } }>('/auth/me'),
   logout: () => apiRequest<{ ok: true }>('/auth/logout', { method: 'POST' }),
   googleStartUrl: () => `${appConfig.apiBaseUrl}/auth/google`,
+  microsoftStartUrl: () => `${appConfig.apiBaseUrl}/auth/microsoft`,
 };

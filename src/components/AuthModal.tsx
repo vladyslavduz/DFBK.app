@@ -39,16 +39,19 @@ function GoogleIcon() {
   );
 }
 
-function AppleIcon() {
+function MicrosoftIcon() {
   return (
     <svg className="auth-v2-provider-icon" aria-hidden="true" viewBox="0 0 24 24">
-      <path d="M17.1 12.7c0-2.4 2-3.6 2.1-3.7a4.6 4.6 0 0 0-3.7-2c-1.6-.2-3.1.9-3.9.9-.8 0-2-1-3.3-1-1.7 0-3.3 1-4.2 2.5-1.8 3.1-.5 7.8 1.3 10.4.9 1.3 2 2.8 3.4 2.7 1.3-.1 1.8-.9 3.4-.9 1.6 0 2 .9 3.4.9 1.4 0 2.3-1.3 3.2-2.6 1-1.5 1.5-3 1.5-3.1-.1 0-3.3-1.3-3.3-4.1ZM14.5 5.4c.7-.9 1.2-2.1 1.1-3.3-1.1 0-2.4.7-3.2 1.6-.7.8-1.3 2-1.1 3.2 1.2.1 2.5-.6 3.2-1.5Z" />
+      <rect x="1" y="1" width="10" height="10" fill="#F25022" />
+      <rect x="13" y="1" width="10" height="10" fill="#7FBA00" />
+      <rect x="1" y="13" width="10" height="10" fill="#00A4EF" />
+      <rect x="13" y="13" width="10" height="10" fill="#FFB900" />
     </svg>
   );
 }
 
 export default function AuthModal({ open, initialMode = 'login', initialError = '', onClose, onAuthenticated, returnFocusRef }: Props) {
-  const { login, register, startGoogle } = useAuth();
+  const { login, register, startGoogle, startMicrosoft } = useAuth();
   const [mode, setMode] = useState<AuthMode>(initialMode);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -180,9 +183,9 @@ export default function AuthModal({ open, initialMode = 'login', initialError = 
             <GoogleIcon />
             <span>Google</span>
           </button>
-          <button type="button" className="auth-v2-provider auth-v2-provider-apple" disabled title="Apple-Anmeldung ist noch nicht verfügbar">
-            <AppleIcon />
-            <span>Apple · Demnächst</span>
+          <button type="button" className="auth-v2-provider auth-v2-provider-microsoft" onClick={startMicrosoft}>
+            <MicrosoftIcon />
+            <span>Microsoft</span>
           </button>
         </div>
 

@@ -14,8 +14,30 @@ export default function Header() {
     google_account_conflict: 'Diese E-Mail-Adresse ist bereits mit einem anderen Google-Konto verbunden.',
     callback_failed: 'Die Google-Anmeldung konnte nicht abgeschlossen werden. Bitte versuche es erneut.',
   };
-  const [oauthError, setOAuthError] = useState(googleReason ? (googleErrors[googleReason] || 'Die Google-Anmeldung konnte nicht abgeschlossen werden.') : '');
-  const [authOpen, setAuthOpen] = useState(Boolean(googleReason));
+  const microsoftError = params.get('auth') === 'microsoft_error';
+  const microsoftReason = microsoftError ? params.get('reason') || 'callback_failed' : '';
+  const microsoftErrors: Record<string, string> = {
+    account_link_required: 'Diese E-Mail-Adresse wird bereits für ein DFBK.app-Konto verwendet. Aus Sicherheitsgründen wurde Microsoft nicht automatisch verknüpft. Bitte melde dich zuerst mit deiner bisherigen Anmeldemethode an. Die Kontoverknüpfung wird separat eingerichtet.',
+    account_conflict: 'Dieses Microsoft-Konto ist bereits mit einem anderen DFBK.app-Konto verbunden.',
+    cancelled: 'Die Microsoft-Anmeldung wurde abgebrochen.',
+    invalid_state: 'Die Microsoft-Anmeldung konnte nicht sicher abgeschlossen werden. Bitte versuche es erneut.',
+    invalid_identity: 'Dein Microsoft-Konto konnte nicht sicher bestätigt werden. Bitte versuche es erneut.',
+    invalid_session: 'Deine Sitzung ist abgelaufen. Bitte melde dich erneut an.',
+    email_unavailable: 'Microsoft hat keine verwendbare E-Mail-Adresse für dieses Konto übermittelt.',
+    not_configured: 'Die Microsoft-Anmeldung ist momentan nicht verfügbar.',
+    token_exchange_failed: 'Die Microsoft-Anmeldung konnte nicht abgeschlossen werden. Bitte versuche es später erneut.',
+    provider_unavailable: 'Microsoft ist momentan nicht erreichbar. Bitte versuche es später erneut.',
+    profile_unavailable: 'Deine Microsoft-Kontodaten konnten nicht abgerufen werden. Bitte versuche es erneut.',
+    invalid_code: 'Die Microsoft-Anmeldung konnte nicht abgeschlossen werden. Bitte starte die Anmeldung erneut.',
+    callback_failed: 'Die Microsoft-Anmeldung konnte nicht abgeschlossen werden. Bitte versuche es erneut.',
+  };
+  const initialOAuthError = microsoftError
+    ? (microsoftErrors[microsoftReason] || microsoftErrors.callback_failed)
+    : googleReason
+      ? (googleErrors[googleReason] || 'Die Google-Anmeldung konnte nicht abgeschlossen werden.')
+      : '';
+  const [oauthError, setOAuthError] = useState(initialOAuthError);
+  const [authOpen, setAuthOpen] = useState(Boolean(googleReason || microsoftError));
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const { user, loading } = useAuth();
   const authTriggerRef = useRef<HTMLButtonElement>(null);
