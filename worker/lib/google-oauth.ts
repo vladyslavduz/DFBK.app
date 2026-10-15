@@ -128,6 +128,8 @@ export function buildGoogleAuthorizationUrl(
     'true'
   );
 
+  url.searchParams.set('prompt', 'select_account');
+
 
   return url.toString();
 }

@@ -14,6 +14,24 @@ const { handleAuth } = await vite.ssrLoadModule('/worker/routes/auth.ts');
 const { hashPassword } = await vite.ssrLoadModule('/worker/lib/password.ts');
 const originalFetch = globalThis.fetch;
 
+test('Google sign-in requests account selection while preserving the code flow, scopes and state cookie', async () => {
+  const env = { GOOGLE_CLIENT_ID: 'google-test-client', GOOGLE_REDIRECT_URI: 'https://dfbk.app/api/auth/google/callback' };
+  const response = await handleAuth(new Request('https://dfbk.app/api/auth/google'), env, '/api/auth/google');
+  assert.equal(response.status, 302);
+  const url = new URL(response.headers.get('location'));
+  assert.equal(url.origin + url.pathname, 'https://accounts.google.com/o/oauth2/v2/auth');
+  assert.equal(url.searchParams.get('prompt'), 'select_account');
+  assert.equal(url.searchParams.get('response_type'), 'code');
+  assert.equal(url.searchParams.get('scope'), 'openid email profile');
+  assert.equal(url.searchParams.get('redirect_uri'), env.GOOGLE_REDIRECT_URI);
+  const state = url.searchParams.get('state');
+  assert.match(state, /^[A-Za-z0-9_-]{43}$/);
+  const cookie = response.headers.get('set-cookie');
+  assert.ok(cookie.includes(`dfbk_google_oauth_state=${state};`));
+  assert.match(cookie, /HttpOnly/);
+  assert.match(cookie, /Secure/);
+});
+
 after(async () => {
   globalThis.fetch = originalFetch;
   await vite.close();
