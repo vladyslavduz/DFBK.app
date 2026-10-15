@@ -5,7 +5,7 @@ import { createServer } from 'vite';
 const vite = await createServer({
   configFile: false,
   optimizeDeps: { noDiscovery: true, include: [] },
-  server: { middlewareMode: true },
+  server: { middlewareMode: true, hmr: false },
   appType: 'custom',
 });
 const { entitlementsService, fallbackTrialEntitlements, normalizeEntitlements } = await vite.ssrLoadModule('/src/services/entitlements.ts');
