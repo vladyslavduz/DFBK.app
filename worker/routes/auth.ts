@@ -1087,17 +1087,22 @@ async function microsoftCallback(request: Request, env: Env): Promise<Response> 
   const code = url.searchParams.get('code');
   if (!code || code.length > 4096) return fail('invalid_code');
 
+  let stage = 'token_exchange';
   try {
     const { idToken, accessToken } = await exchangeMicrosoftCode(env, code, attempt.verifier);
+    stage = 'identity_validation';
     const identity = await validateMicrosoftIdentity(env, idToken, attempt.nonce);
+    stage = 'profile_fetch';
     const email = await fetchMicrosoftProfile(accessToken, identity);
     const subject = `${identity.tid.toLowerCase()}:${identity.sub}`;
+    stage = 'user_lookup';
     const linked = await env.DB.prepare(`SELECT id FROM users WHERE microsoft_sub=?1 LIMIT 1`)
       .bind(subject).first<{ id: string }>();
     let userId: string;
     if (attempt.mode === 'link') {
       if (linked && linked.id !== linkingUserId) return fail('account_conflict');
       if (!linked) {
+        stage = 'user_link';
         const update = await env.DB.prepare(`UPDATE users SET microsoft_sub=?1 WHERE id=?2 AND microsoft_sub IS NULL`)
           .bind(subject, linkingUserId).run();
         if (!update.meta.changes) return fail('account_conflict');
@@ -1108,14 +1113,17 @@ async function microsoftCallback(request: Request, env: Env): Promise<Response> 
     } else {
       if (!email) return fail('email_unavailable');
       // Microsoft email/UPN is not proof of ownership of an existing DFBK account.
+      stage = 'email_collision_lookup';
       const existing = await env.DB.prepare(`SELECT id FROM users WHERE email=?1 LIMIT 1`)
         .bind(email).first<{ id: string }>();
       if (existing) return fail('account_link_required');
       userId = crypto.randomUUID();
+      stage = 'user_create';
       await env.DB.prepare(`INSERT INTO users(id,email,password_hash,email_verified,microsoft_sub)
         VALUES (?1,?2,?3,0,?4)`)
         .bind(userId, email, `oauth$microsoft$${crypto.randomUUID()}`, subject).run();
     }
+    stage = 'session_create';
     const session = await createSessionForUser(env, userId);
     return redirectWithCookies(microsoftResult(request, 'success'), [
       clearMicrosoftCookie(), buildSessionCookie(session.token, session.expiresAt),
@@ -1123,7 +1131,9 @@ async function microsoftCallback(request: Request, env: Env): Promise<Response> 
   } catch (error) {
     const reason = error instanceof MicrosoftOAuthError ? error.reason : 'callback_failed';
     // Fixed reason only: never log authorization codes, identity/access tokens, or provider bodies.
-    console.error('MICROSOFT_CALLBACK_FAILED', reason);
+    // Log fixed stage and built-in exception class only; never error.message or request data.
+    const errorType = error instanceof Error ? error.name : 'UnknownError';
+    console.error('MICROSOFT_CALLBACK_FAILED', reason, stage, errorType);
     return fail(reason);
   }
 }
