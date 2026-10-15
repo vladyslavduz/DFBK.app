@@ -10,6 +10,7 @@ type AuthContextValue = {
   register: (email: string, password: string) => Promise<RegisterResult>;
   logout: () => Promise<void>;
   startGoogle: () => void;
+  startMicrosoft: () => void;
   refresh: () => Promise<void>;
 };
 
@@ -32,10 +33,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const googleResult = params.get('auth');
+    const oauthResult = params.get('auth');
 
     void refresh().then(() => {
-      if (googleResult === 'google_success') {
+      if (oauthResult === 'google_success' || oauthResult === 'microsoft_success') {
         window.history.replaceState({}, '', '/app');
         window.dispatchEvent(new PopStateEvent('popstate'));
       }
@@ -72,6 +73,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     window.location.assign(authService.googleStartUrl());
   }
 
+  function startMicrosoft() {
+    window.location.assign(authService.microsoftStartUrl());
+  }
+
   const value = useMemo<AuthContextValue>(() => ({
     user,
     loading,
@@ -79,6 +84,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     register,
     logout,
     startGoogle,
+    startMicrosoft,
     refresh,
   }), [loading, user]);
 
