@@ -121,8 +121,9 @@ export async function exchangeMicrosoftCode(env: Env, code: string, verifier: st
     body: new URLSearchParams({ client_id: env.MICROSOFT_CLIENT_ID, client_secret: env.MICROSOFT_CLIENT_SECRET,
       code, code_verifier: verifier, redirect_uri: env.MICROSOFT_REDIRECT_URI, grant_type: 'authorization_code',
       scope: 'openid profile email User.Read' }),
-    redirect: 'error', signal: AbortSignal.timeout(15_000),
+    redirect: 'manual', signal: AbortSignal.timeout(15_000),
   });
+  if (response.status >= 300 && response.status < 400) throw new MicrosoftOAuthError('token_exchange_failed');
   if (!response.ok) throw new MicrosoftOAuthError('token_exchange_failed');
   const data = await readJson(response);
   if (typeof data.id_token !== 'string' || typeof data.access_token !== 'string' ||
@@ -149,7 +150,8 @@ export async function validateMicrosoftIdentity(env: Env, idToken: string, nonce
       (typeof claims.iat === 'number' && claims.iat > Date.now() / 1000 + 60)) {
     throw new MicrosoftOAuthError('invalid_identity');
   }
-  const keyResponse = await fetch(JWKS_URL, { redirect: 'error', signal: AbortSignal.timeout(15_000) });
+  const keyResponse = await fetch(JWKS_URL, { redirect: 'manual', signal: AbortSignal.timeout(15_000) });
+  if (keyResponse.status >= 300 && keyResponse.status < 400) throw new MicrosoftOAuthError('provider_unavailable');
   if (!keyResponse.ok) throw new MicrosoftOAuthError('provider_unavailable');
   const jwks = await readJson(keyResponse);
   const key = Array.isArray(jwks.keys) ? jwks.keys.find((candidate: Record<string, any>) =>
@@ -169,7 +171,8 @@ export async function validateMicrosoftIdentity(env: Env, idToken: string, nonce
 
 export async function fetchMicrosoftProfile(accessToken: string, identity: IdClaims): Promise<string | null> {
   const response = await fetch(GRAPH_ME_URL, { headers: { Authorization: `Bearer ${accessToken}` },
-    redirect: 'error', signal: AbortSignal.timeout(15_000) });
+    redirect: 'manual', signal: AbortSignal.timeout(15_000) });
+  if (response.status >= 300 && response.status < 400) throw new MicrosoftOAuthError('profile_unavailable');
   if (!response.ok) throw new MicrosoftOAuthError('profile_unavailable');
   const profile = await readJson(response);
   if (identity.oid && profile.id !== identity.oid) throw new MicrosoftOAuthError('invalid_identity');
