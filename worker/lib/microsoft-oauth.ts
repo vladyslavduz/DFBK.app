@@ -175,7 +175,13 @@ export async function fetchMicrosoftProfile(accessToken: string, identity: IdCla
   if (response.status >= 300 && response.status < 400) throw new MicrosoftOAuthError('profile_unavailable');
   if (!response.ok) throw new MicrosoftOAuthError('profile_unavailable');
   const profile = await readJson(response);
-  if (identity.oid && profile.id !== identity.oid) throw new MicrosoftOAuthError('invalid_identity');
+  if (identity.oid && profile.id !== identity.oid) {
+    // Boolean-only diagnostics: never log either identifier or Microsoft profile data.
+    console.error('MICROSOFT_PROFILE_ID_CHECK', 'oid_present=true',
+      `graph_id_present=${typeof profile.id === 'string' && profile.id.length > 0}`,
+      'ids_equal=false');
+    throw new MicrosoftOAuthError('invalid_identity');
+  }
   const email = [profile.mail, identity.email, profile.userPrincipalName, identity.preferred_username]
     .find(value => typeof value === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value));
   return typeof email === 'string' ? email.trim().toLowerCase() : null;
