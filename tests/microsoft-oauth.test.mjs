@@ -51,7 +51,7 @@ async function begin(env, link = false) {
     cookie: result.headers.get('set-cookie').split(';')[0], url };
 }
 
-function provider(nonce, { email = 'new@example.com', claims = {}, error = false } = {}) {
+function provider(nonce, { email = 'new@example.com', claims = {}, graphId = oid, error = false } = {}) {
   let exchanges = 0;
   globalThis.fetch = async (input, options = {}) => {
     const url = String(input);
@@ -66,7 +66,7 @@ function provider(nonce, { email = 'new@example.com', claims = {}, error = false
     if (url.endsWith('/keys')) return Response.json({ keys: [jwk] });
     if (url.startsWith('https://graph.microsoft.com/')) {
       assert.equal(options.headers.Authorization, 'Bearer private-access-token');
-      return Response.json({ id: oid, mail: email, userPrincipalName: email });
+      return Response.json({ id: graphId, mail: email, userPrincipalName: email });
     }
     throw new Error('Unexpected provider endpoint');
   };
@@ -147,6 +147,52 @@ test('tampered state, another browser session, wrong audience and provider failu
   result = await callback(env, attempt);
   assert.equal(new URL(result.headers.get('location')).searchParams.get('reason'), 'token_exchange_failed');
   assert.equal(db.prepare('SELECT COUNT(*) AS n FROM users').get().n, 2);
+  db.close();
+});
+
+test('personal Microsoft tenant accepts differing Graph ID while relying on verified tid:sub', async () => {
+  const { db, env } = await setup();
+  const attempt = await begin(env);
+  const personalTenant = '9188040d-6c67-4c5b-b112-36a304b66dad';
+  provider(attempt.nonce, {
+    email: 'personal@example.com',
+    claims: { tid: personalTenant, iss: `https://login.microsoftonline.com/${personalTenant}/v2.0` },
+    graphId: 'personal-graph-identifier-not-equal-to-oid',
+  });
+  const result = await callback(env, attempt);
+  assert.equal(new URL(result.headers.get('location')).searchParams.get('auth'), 'microsoft_success');
+  assert.equal(db.prepare('SELECT microsoft_sub FROM users WHERE email=?').get('personal@example.com').microsoft_sub,
+    `${personalTenant}:pairwise-subject`);
+  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM sessions').get().n, 3);
+  db.close();
+});
+
+test('Entra tenant rejects mismatched Graph ID without creating user or session', async () => {
+  const { db, env } = await setup();
+  const attempt = await begin(env);
+  provider(attempt.nonce, { graphId: 'different-entra-id' });
+  const result = await callback(env, attempt);
+  assert.equal(new URL(result.headers.get('location')).searchParams.get('reason'), 'invalid_identity');
+  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM users').get().n, 2);
+  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM sessions').get().n, 2);
+  db.close();
+});
+
+test('personal tenant still requires Graph profile ID and forbids email-based account takeover', async () => {
+  const { db, env } = await setup();
+  const personalTenant = '9188040d-6c67-4c5b-b112-36a304b66dad';
+  let attempt = await begin(env);
+  const claims = { tid: personalTenant, iss: `https://login.microsoftonline.com/${personalTenant}/v2.0` };
+  provider(attempt.nonce, { claims, graphId: null });
+  let result = await callback(env, attempt);
+  assert.equal(new URL(result.headers.get('location')).searchParams.get('reason'), 'invalid_identity');
+  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM users').get().n, 2);
+  attempt = await begin(env);
+  provider(attempt.nonce, { claims, graphId: 'personal-graph-id', email: 'user@example.com' });
+  result = await callback(env, attempt);
+  assert.equal(new URL(result.headers.get('location')).searchParams.get('reason'), 'account_link_required');
+  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM users').get().n, 2);
+  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM sessions').get().n, 2);
   db.close();
 });
 

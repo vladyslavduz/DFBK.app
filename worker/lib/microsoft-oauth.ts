@@ -175,11 +175,15 @@ export async function fetchMicrosoftProfile(accessToken: string, identity: IdCla
   if (response.status >= 300 && response.status < 400) throw new MicrosoftOAuthError('profile_unavailable');
   if (!response.ok) throw new MicrosoftOAuthError('profile_unavailable');
   const profile = await readJson(response);
-  if (identity.oid && profile.id !== identity.oid) {
-    // Boolean-only diagnostics: never log either identifier or Microsoft profile data.
-    console.error('MICROSOFT_PROFILE_ID_CHECK', 'oid_present=true',
-      `graph_id_present=${typeof profile.id === 'string' && profile.id.length > 0}`,
-      'ids_equal=false');
+  // Personal Microsoft accounts can expose a Graph /me ID in a different
+  // identifier namespace from the signed ID token's oid. Authentication
+  // remains anchored to the verified (tid, sub), never to Graph ID or email.
+  const isPersonalMicrosoftTenant =
+    identity.tid.toLowerCase() === '9188040d-6c67-4c5b-b112-36a304b66dad';
+  if (typeof profile.id !== 'string' || !profile.id) {
+    throw new MicrosoftOAuthError('invalid_identity');
+  }
+  if (!isPersonalMicrosoftTenant && identity.oid && profile.id !== identity.oid) {
     throw new MicrosoftOAuthError('invalid_identity');
   }
   const email = [profile.mail, identity.email, profile.userPrincipalName, identity.preferred_username]
