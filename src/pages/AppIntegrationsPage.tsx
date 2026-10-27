@@ -44,7 +44,7 @@ export default function AppIntegrationsPage() {
     try {
       await selectAccount(provider, connectionId);
       window.history.replaceState({}, '', '/app/integrations');
-      if (draft?.projectId) navigate(`/app/projects/${draft.projectId}?publish=resume`);
+      if (draft?.projectId) navigate(`/app/projects/${encodeURIComponent(draft.projectId)}/publish`);
     } catch {
       setActionError('Das Konto konnte nicht ausgewählt werden. Bitte versuche es erneut.');
     }

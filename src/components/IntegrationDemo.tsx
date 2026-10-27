@@ -144,7 +144,7 @@ export default function IntegrationDemo() {
           <div className="integration-demo__compare-grid">
             <figure className="integration-demo__compare-card">
               <figcaption>Original</figcaption>
-              <FilledImage src={`${base}/friseur-before.webp`} className="integration-demo__compare-frame" />
+              <FilledImage src={`${base}/friseur-after.webp`} className="integration-demo__compare-frame" />
             </figure>
             <figure className="integration-demo__compare-card integration-demo__compare-card--optimized">
               <figcaption>DFBK.app optimiert</figcaption>
