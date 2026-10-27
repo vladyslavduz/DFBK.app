@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
+import { navigate } from '../lib/router';
 import AppIcon from './AppIcon';
-import SocialPublishModal from './SocialPublishModal';
 import { useSocialPublishing } from '../contexts/SocialPublishingContext';
 import { useUserArea, type ContentChannel } from '../contexts/UserAreaContext';
 import { getProjectMediaUrl, projectService } from '../services/projects';
@@ -30,13 +30,12 @@ function shareFeedback(outcome: ShareOutcome) {
 
 export default function ChannelCard({ channel, value, onChange, projectId, projectTitle, downloadImage }: Props) {
   const { plan } = useUserArea();
-  const { draft } = useSocialPublishing();
+  const { draft, saveDraft } = useSocialPublishing();
   const [editing, setEditing] = useState(false);
   const [socialDraft, setSocialDraft] = useState(value);
   const [copied, setCopied] = useState(false);
   const [sharing, setSharing] = useState(false);
   const [shareMessage, setShareMessage] = useState('');
-  const [publishOpen, setPublishOpen] = useState(false);
   const [socialImage, setSocialImage] = useState<{ url: string; source: 'optimized' | 'original' } | null>(null);
   const shareEnabled = plan.source === 'backend' && plan.status === 'active' && plan.features.share;
   const displayedValue = channel === 'social' ? socialDraft : value;
@@ -74,8 +73,7 @@ export default function ChannelCard({ channel, value, onChange, projectId, proje
     if (channel !== 'social') return;
     const params = new URLSearchParams(window.location.search);
     if (params.get('publish') === 'resume' && draft?.projectId === projectId) {
-      setPublishOpen(true);
-      window.history.replaceState({}, '', window.location.pathname);
+      navigate('/app/projects/' + encodeURIComponent(projectId) + '/publish');
     }
   }, [channel, draft, projectId]);
 
@@ -124,7 +122,7 @@ export default function ChannelCard({ channel, value, onChange, projectId, proje
           : <p>{displayedValue}</p>}
 
         <div className={`channel-actions${channel === 'social' ? ' social-channel-actions' : ''}`}>
-          {channel === 'social' && <button className="channel-publish-action" type="button" onClick={() => setPublishOpen(true)}><AppIcon name="share" />Veröffentlichen</button>}
+          {channel === 'social' && <button className="channel-publish-action" type="button" onClick={() => { saveDraft({ projectId, caption: displayedValue, providers: [], mediaId: null, useOptimizedImage: true }); navigate('/app/projects/' + encodeURIComponent(projectId) + '/publish'); }}><AppIcon name="share" />Veröffentlichen</button>}
           <button type="button" onClick={() => setEditing(current => !current)}><AppIcon name="edit" />{editing ? 'Übernehmen' : 'Bearbeiten'}</button>
           <button type="button" onClick={() => void copy()}><AppIcon name={copied ? 'check' : 'copy'} />{copied ? 'Kopiert' : 'Kopieren'}</button>
           {downloadImage && <a className="channel-download-action" href={downloadImage} download="dfbk-projektbild"><AppIcon name="download" />Bild herunterladen</a>}
@@ -135,14 +133,7 @@ export default function ChannelCard({ channel, value, onChange, projectId, proje
         {shareMessage && <p className="channel-share-note" role="status">{shareMessage}</p>}
       </article>
 
-      {channel === 'social' && publishOpen && (
-        <SocialPublishModal
-          projectId={projectId}
-          projectTitle={projectTitle}
-          initialCaption={displayedValue}
-          onClose={() => setPublishOpen(false)}
-        />
-      )}
+
     </>
   );
 }

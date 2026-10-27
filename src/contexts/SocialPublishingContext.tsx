@@ -158,8 +158,15 @@ export function SocialPublishingProvider({ children }: { children: ReactNode }) 
   }
 
   function saveAttempt(next: SocialAttempt | null) {
+    if (!user) throw new Error('SOCIAL_ATTEMPT_OWNER_REQUIRED');
+    const key = storageKey(user.id, 'attempt');
+    const serialized = next === null ? null : JSON.stringify(next);
+    try {
+      if (serialized === null) window.sessionStorage.removeItem(key);
+      else window.sessionStorage.setItem(key, serialized);
+      if (window.sessionStorage.getItem(key) !== serialized) throw new Error();
+    } catch { throw new Error('SOCIAL_ATTEMPT_STORAGE_UNAVAILABLE'); }
     setAttempt(next);
-    if (user) safeWrite(storageKey(user.id, 'attempt'), next);
   }
 
   const value = useMemo<SocialContextValue>(() => ({

@@ -1,4 +1,6 @@
 import { useEffect } from 'react';
+import ProjectPublishPage from './pages/ProjectPublishPage';
+import './styles/publishing.css';
 import { usePathname } from './lib/router';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
@@ -44,6 +46,7 @@ export default function App() {
   if (pathname === '/app') return <AppAccessGate><DashboardPage /></AppAccessGate>;
   if (pathname === '/app/new') return <AppAccessGate><CreateProjectPage /></AppAccessGate>;
   if (pathname === '/app/projects') return <AppAccessGate><ProjectsPage /></AppAccessGate>;
+  if (/^\/app\/projects\/[^/]+\/publish$/.test(pathname)) return <AppAccessGate><ProjectPublishPage id={pathname.split('/')[3]} /></AppAccessGate>;
   if (pathname.startsWith('/app/projects/')) return <AppAccessGate><ProjectDetailPage id={pathname.split('/').filter(Boolean)[2] || '---'} /></AppAccessGate>;
   if (pathname === '/app/settings') return <AppAccessGate><SettingsPage /></AppAccessGate>;
   if (pathname === '/app/billing') return <AppAccessGate><BillingPage /></AppAccessGate>;
