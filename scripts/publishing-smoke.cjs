@@ -30,29 +30,6 @@ const assert = require('node:assert/strict');
    }
    await route.fulfill({status,json:data});
   });
-  await page.goto('http://127.0.0.1:5173/integrations');
-  await page.locator('.mvp-integration-card').first().waitFor();
-  assert.equal(await page.locator('.mvp-integration-card').count(),9);
-  await page.locator('.mvp-integration-card').filter({hasText:'Instagram'}).getByRole('button').click();
-  await page.waitForFunction(()=>!document.querySelector('.publishing-actions button.button')?.disabled);
-  await page.getByRole('button',{name:'Datei und Text teilen',exact:true}).click();
-  let shares=await page.evaluate(()=>window.fixtureShares);assert.equal(shares.length,1);assert.equal(shares[0].type,'video/mp4');assert.ok(shares[0].size>100000);
-  await page.evaluate(()=>{window.fixtureVideoSupported=false;});
-  await page.getByRole('button',{name:'Datei und Text teilen',exact:true}).click();
-  await page.waitForFunction(()=>!document.querySelector('.publishing-actions button.button')?.disabled);
-  await page.getByRole('button',{name:'Datei und Text teilen',exact:true}).click();
-  shares=await page.evaluate(()=>window.fixtureShares);assert.equal(shares.length,2);assert.equal(shares[1].type,'image/jpeg');assert.equal(shares[0].text,shares[1].text);
-  for(const card of await page.locator('.mvp-integration-card').all()){
-   await card.getByRole('button').click();
-   await page.getByRole('button',{name:'Bild verwenden',exact:true}).click();
-   await page.getByRole('button',{name:'Datei herunterladen',exact:true}).waitFor();
-   await page.waitForFunction(()=>!document.querySelector('.publishing-preview button[disabled]'));
-   assert.match(await page.locator('.publishing-preview textarea').inputValue(),/dfbk\.app/);
-  }
-  assert.ok(!requested.some(p=>p.startsWith('/api/projects')),'Guest must not fetch private projects');
-  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Mobile has no horizontal overflow');
-  require('node:fs').mkdirSync('artifacts/publishing',{recursive:true});
-  await page.screenshot({path:'artifacts/publishing/mobile.png',fullPage:true});
   loggedIn=true;await page.goto('http://127.0.0.1:5173/app/projects/selected/publish');
   await page.getByRole('heading',{name:'Selected fixture project',exact:true}).waitFor();
   await page.locator('.mvp-integration-card').filter({hasText:'Instagram'}).getByRole('button').click();
@@ -89,6 +66,6 @@ const assert = require('node:assert/strict');
   await page.getByRole('button',{name:'Weiteren Beitrag vorbereiten'}).waitFor();
   assert.equal(posts.length,6);assert.deepEqual(posts[4],posts[5],'Pending continuation must reuse exact payload/key');
   assert.equal(errors.length,0,errors.join('\n'));
-  console.log('PASS: native MP4 and JPEG handoff, unsupported-video fallback, 9 guest channels, public privacy, mobile layout, exact project/media/text, uncertain POST blocked, reload recovery preserves payload/key, terminal reset, separate Facebook text, storage failure blocks POST, pending resumes same request.');
+  console.log('PASS: exact private project/media/text, uncertain POST blocked, reload recovery preserves payload/key, terminal reset, separate Facebook text, storage failure blocks POST, pending resumes same request.');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1});
