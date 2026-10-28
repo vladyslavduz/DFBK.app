@@ -114,6 +114,8 @@ export default function ProjectDetailPage({ id }: { id: string }) {
         </div>
       </header>
 
+      {showContent && <AppLink className="button" to={'/app/projects/' + encodeURIComponent(project.id) + '/publish'}>Materialien verwenden<AppIcon name="arrow" /></AppLink>}
+
       <ProjectImageViewer
         projectId={project.id}
         originalImage={project.originalImage}

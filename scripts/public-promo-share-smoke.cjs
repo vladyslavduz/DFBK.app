@@ -1,6 +1,7 @@
 const {chromium}=require('playwright');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
+const origin=process.env.PROMO_ORIGIN || 'http://127.0.0.1:5173';
 (async()=>{
  const browser=await chromium.launch({executablePath:process.env.PROMO_BROWSER || 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',headless:true});
  try{
@@ -19,7 +20,7 @@ const fs=require('node:fs');
    await route.continue();
   });
   const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));
-  await page.goto('http://127.0.0.1:5173/integrations');
+  await page.goto(origin+'/integrations');
   const cards=page.locator('.promo-share .mvp-integration-card');
   await cards.first().waitFor();assert.equal(await cards.count(),9);
   for(const name of ['Facebook','WhatsApp','X','LinkedIn','Pinterest','E-Mail']){
