@@ -29,5 +29,8 @@ The new canonical public share URL and image require deployment of this change b
 ## Windows sharing correction (2026-10-28)
 The user observed the Windows sharing picker instead of Instagram. The Instagram channel action no longer invokes navigator.share. Browser regression explicitly enables native-share support and verifies zero native calls from the channel action, JPEG download, exact description copying, the Instagram destination (mocked), and optional native sharing/cancellation. No real social posts are used for this check.
 
+## Website/Google Business dialog correction (2026-10-28)
+Website and Google Business no longer offer generic OS sharing. Their flow is explicitly download/copy/use in the destination editor. HTML export is collapsed by default. The shared dialog uses scoped compact typography and sticky close and action controls; opening a dialog resets its scroll to the top, and video selection shows a real video preview. These changes do not implement connected CMS publishing.
+
 ## Stop point
 Tested local implementation ready for one PR. Next release action: verify Cloudflare settings after sign-in, merge the exact tested tree as one squash commit, then publish only with the applicable production authorization and verify the public URLs. Do not create a real post as a test without user authorization.

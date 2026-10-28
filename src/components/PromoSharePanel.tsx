@@ -39,7 +39,10 @@ export default function PromoSharePanel() {
     if (!dialog.current?.open) { lastTrigger.current = trigger; setFormat('photo'); }
     setSelected(channel);
     setFeedback('');
-    if (!dialog.current?.open) dialog.current?.showModal();
+    if (!dialog.current?.open) {
+      dialog.current?.showModal();
+      requestAnimationFrame(() => { if (dialog.current?.open) dialog.current.scrollTop = 0; });
+    }
   }
 
   async function nativeShare(channel: PublishingChannel, file: File | null, trigger: HTMLElement) {
@@ -95,25 +98,24 @@ export default function PromoSharePanel() {
     <div className="publishing-actions"><button type="button" onClick={event => open('instagram', event.currentTarget)}>Foto oder Video auswählen</button></div>
     <p role="status" aria-live="polite">{feedback}</p>
     <dialog ref={dialog} className="promo-share-dialog" aria-labelledby="promo-share-heading" onClose={() => lastTrigger.current?.focus()}>
-      <div className="publishing-actions"><button type="button" onClick={close}>Schließen</button></div>
-      <h2 id="promo-share-heading">{selected === 'website' ? 'Auf deiner Website verwenden' : selected === 'google_business' ? 'Für dein Unternehmensprofil' : 'Für Instagram vorbereiten'}</h2>
+      <header className="promo-dialog-heading"><h2 id="promo-share-heading">{selected === 'website' ? 'Auf deiner Website verwenden' : selected === 'google_business' ? 'Für dein Unternehmensprofil' : 'Für Instagram vorbereiten'}</h2><button type="button" onClick={close}>Schließen</button></header>
       {selected === 'website' ? <>
         <label>Deine Plattform<select value={cms} onChange={event => setCms(event.target.value)}>{cmsPlatforms.map(name => <option key={name}>{name}</option>)}</select></label>
-        <p>Öffne deinen Editor in {cms}. Übernimm das Beispiel als Bild und Text oder füge den HTML-Code in einen dafür vorgesehenen Bereich ein. Das ist eine manuelle Übernahme; dein Website-Konto wird nicht verbunden.</p>
-        <label>HTML-Beispiel<textarea aria-label="HTML-Beispiel" readOnly rows={9} value={promoEmbedHtml} /></label>
-        <button className="button button-secondary" type="button" onClick={() => void copy(promoEmbedHtml)}>HTML kopieren</button>
+        <p>Lade das Material herunter und öffne deinen Website-Editor in {cms}. Füge Bild oder Video und Beschreibung ein. Du bestätigst die Veröffentlichung in deinem Website-Editor.</p>
+        <details className="promo-html"><summary>HTML-Code (optional)</summary><label>HTML-Beispiel<textarea aria-label="HTML-Beispiel" readOnly rows={9} value={promoEmbedHtml} /></label>
+        <button className="button button-secondary" type="button" onClick={() => void copy(promoEmbedHtml)}>HTML kopieren</button></details>
       </> : selected === 'instagram' ? <><ol><li>Foto oder Video herunterladen.</li><li>Beschreibung kopieren.</li><li>Instagram öffnen, einen neuen Beitrag anlegen, die Datei auswählen und die Beschreibung einfügen.</li></ol><p>Ob Feed, Story oder Reel möglich ist, wählst du in Instagram. Die Datei wird beim Öffnen von Instagram nicht automatisch hochgeladen.</p></> : <p>Übernimm Bild und Beschreibung in dein Unternehmensprofil und bestätige den Beitrag dort.</p>}
       <label>Material<select value={format} onChange={event => setFormat(event.target.value as 'photo' | 'video')}><option value="photo">Foto + Text</option><option value="video">Video + Text</option></select></label>
-      <img className="promo-dialog-image" src="/promo/dfbk-friseur.jpg" alt="DFBK-Werbebeispiel aus einem Friseurfoto" />
-      <label>Beschreibung<textarea aria-label="Beschreibung" readOnly rows={6} value={promoShareText(selected)} /></label>
-      <div className="publishing-actions">
+      {format === 'video' ? <video className="promo-dialog-image" controls playsInline preload="metadata" poster="/promo/dfbk-friseur.jpg" src={promoVideos[0].url} /> : <img className="promo-dialog-image" src="/promo/dfbk-friseur.jpg" alt="DFBK-Werbebeispiel aus einem Friseurfoto" />}
+      <label>Beschreibung<textarea aria-label="Beschreibung" readOnly rows={4} value={promoShareText(selected)} /></label>
+      <div className="publishing-actions promo-dialog-actions">
         <button className="button button-secondary" type="button" disabled={!file} onClick={() => download(file)}>Datei herunterladen</button>
         <button className="button button-secondary" type="button" onClick={() => void copy(promoShareText(selected))}>Text kopieren</button>
         {selected === 'instagram' && <a className="button" href="https://www.instagram.com/" target="_blank" rel="noopener noreferrer">Instagram öffnen</a>}
         {selected === 'google_business' && <a className="button button-secondary" href="https://business.google.com/" target="_blank" rel="noopener noreferrer">Unternehmensprofil öffnen</a>}
-        <button className="button button-secondary" type="button" disabled={!file || busy || typeof navigator.share !== 'function'} onClick={event => void nativeShare(selected, file, event.currentTarget)}>System-Teilen (optional)</button>
+        {selected === 'instagram' && <button className="button button-secondary" type="button" disabled={!file || busy || typeof navigator.share !== 'function'} onClick={event => void nativeShare(selected, file, event.currentTarget)}>System-Teilen (optional)</button>}
       </div>
-      <p>System-Teilen öffnet das allgemeine Menü deines Geräts. Instagram ist dort nicht auf jedem Gerät verfügbar.</p>
+      {selected === 'instagram' && <p>System-Teilen öffnet das allgemeine Menü deines Geräts. Instagram ist dort nicht auf jedem Gerät verfügbar.</p>}
       {!file && <p role="status">{error ? 'Foto konnte nicht geladen werden.' : format === 'video' ? 'Video wird vorbereitet. Du kannst auch das Foto wählen.' : 'Foto wird vorbereitet …'}</p>}
       {error && <button type="button" onClick={() => setRetry(value => value + 1)}>Erneut laden</button>}
       <p role="status" aria-live="polite">{feedback}</p>
