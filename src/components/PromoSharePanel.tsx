@@ -46,6 +46,7 @@ export default function PromoSharePanel() {
     if (sharing.current) return;
     if (!file || !navigator.share || !navigator.canShare?.({ files: [file] })) {
       open(channel, trigger);
+      setFeedback(file ? 'Dieses Gerät bietet keine passende Dateiübergabe. Lade die Datei herunter und kopiere die Beschreibung.' : 'Die Datei wird noch vorbereitet. Bitte warte einen Moment.');
       return;
     }
     // The file is prepared before the click; no awaited fetch consumes user activation.
@@ -85,12 +86,12 @@ export default function PromoSharePanel() {
       const href = promoShareLink(channel.id);
       return <article className="mvp-integration-card" key={channel.id}>
         <img src={'/visual/integrations/icons/' + channel.icon} alt="" />
-        <div><strong>{channel.label}</strong><span>{channel.id === 'instagram' ? 'Foto oder Video über dein Gerät weitergeben.' : channel.id === 'website' ? 'Plattform wählen und Beispiel übernehmen.' : channel.id === 'google_business' ? 'Bild und Text für dein Unternehmensprofil übernehmen.' : 'Unser Beispiel im Teilen-Fenster weitergeben.'}</span></div>
+        <div><strong>{channel.label}</strong><span>{channel.id === 'instagram' ? 'Material vorbereiten und Instagram öffnen.' : channel.id === 'website' ? 'Plattform wählen und Beispiel übernehmen.' : channel.id === 'google_business' ? 'Bild und Text für dein Unternehmensprofil übernehmen.' : 'Unser Beispiel im Teilen-Fenster weitergeben.'}</span></div>
         {href ? <a className="promo-share-link" href={href} target={channel.id === 'email' ? undefined : '_blank'} rel="noopener noreferrer" aria-label={channel.label + ': Beispiel teilen'}>Teilen</a>
-          : <button type="button" disabled={busy} onClick={event => channel.id === 'instagram' ? void nativeShare(channel.id, photo, event.currentTarget) : open(channel.id, event.currentTarget)}>{channel.id === 'website' ? 'Plattform wählen' : channel.id === 'google_business' ? 'Übernehmen' : 'Teilen'}</button>}
+          : <button type="button" disabled={busy} onClick={event => open(channel.id, event.currentTarget)}>{channel.id === 'website' ? 'Plattform wählen' : channel.id === 'google_business' ? 'Übernehmen' : 'Teilen'}</button>}
       </article>;
     })}</div>
-    <p className="share-hub__note">Facebook und andere Dienste bestimmen die Link-Vorschau selbst. Instagram wird im System-Menü gewählt, sofern dein Gerät es anbietet. Feed, Story oder Reel bestätigst du in der Ziel-App; ein Link-Aufruf bestätigt keinen veröffentlichten Beitrag.</p>
+    <p className="share-hub__note">Facebook und andere Dienste bestimmen die Link-Vorschau selbst. Für Instagram lädst du das Material herunter und erstellst den Beitrag in Instagram. Das System-Teilen ist optional; ein Link-Aufruf bestätigt keinen veröffentlichten Beitrag.</p>
     <div className="publishing-actions"><button type="button" onClick={event => open('instagram', event.currentTarget)}>Foto oder Video auswählen</button></div>
     <p role="status" aria-live="polite">{feedback}</p>
     <dialog ref={dialog} className="promo-share-dialog" aria-labelledby="promo-share-heading" onClose={() => lastTrigger.current?.focus()}>
@@ -101,17 +102,18 @@ export default function PromoSharePanel() {
         <p>Öffne deinen Editor in {cms}. Übernimm das Beispiel als Bild und Text oder füge den HTML-Code in einen dafür vorgesehenen Bereich ein. Das ist eine manuelle Übernahme; dein Website-Konto wird nicht verbunden.</p>
         <label>HTML-Beispiel<textarea aria-label="HTML-Beispiel" readOnly rows={9} value={promoEmbedHtml} /></label>
         <button className="button button-secondary" type="button" onClick={() => void copy(promoEmbedHtml)}>HTML kopieren</button>
-      </> : <p>Wähle {selected === 'instagram' ? 'Instagram' : 'dein Unternehmensprofil'} als Ziel. Die Ziel-App bestimmt, welche Formate verfügbar sind. Je nach App musst du den Text separat einfügen.</p>}
+      </> : selected === 'instagram' ? <><ol><li>Foto oder Video herunterladen.</li><li>Beschreibung kopieren.</li><li>Instagram öffnen, einen neuen Beitrag anlegen, die Datei auswählen und die Beschreibung einfügen.</li></ol><p>Ob Feed, Story oder Reel möglich ist, wählst du in Instagram. Die Datei wird beim Öffnen von Instagram nicht automatisch hochgeladen.</p></> : <p>Übernimm Bild und Beschreibung in dein Unternehmensprofil und bestätige den Beitrag dort.</p>}
       <label>Material<select value={format} onChange={event => setFormat(event.target.value as 'photo' | 'video')}><option value="photo">Foto + Text</option><option value="video">Video + Text</option></select></label>
       <img className="promo-dialog-image" src="/promo/dfbk-friseur.jpg" alt="DFBK-Werbebeispiel aus einem Friseurfoto" />
       <label>Beschreibung<textarea aria-label="Beschreibung" readOnly rows={6} value={promoShareText(selected)} /></label>
       <div className="publishing-actions">
-        <button className="button" type="button" disabled={!file || busy} onClick={event => void nativeShare(selected, file, event.currentTarget)}>Datei und Text teilen</button>
         <button className="button button-secondary" type="button" disabled={!file} onClick={() => download(file)}>Datei herunterladen</button>
         <button className="button button-secondary" type="button" onClick={() => void copy(promoShareText(selected))}>Text kopieren</button>
-        {selected === 'instagram' && <a className="button button-secondary" href="https://www.instagram.com/" target="_blank" rel="noopener noreferrer">Instagram öffnen</a>}
+        {selected === 'instagram' && <a className="button" href="https://www.instagram.com/" target="_blank" rel="noopener noreferrer">Instagram öffnen</a>}
         {selected === 'google_business' && <a className="button button-secondary" href="https://business.google.com/" target="_blank" rel="noopener noreferrer">Unternehmensprofil öffnen</a>}
+        <button className="button button-secondary" type="button" disabled={!file || busy || typeof navigator.share !== 'function'} onClick={event => void nativeShare(selected, file, event.currentTarget)}>System-Teilen (optional)</button>
       </div>
+      <p>System-Teilen öffnet das allgemeine Menü deines Geräts. Instagram ist dort nicht auf jedem Gerät verfügbar.</p>
       {!file && <p role="status">{error ? 'Foto konnte nicht geladen werden.' : format === 'video' ? 'Video wird vorbereitet. Du kannst auch das Foto wählen.' : 'Foto wird vorbereitet …'}</p>}
       {error && <button type="button" onClick={() => setRetry(value => value + 1)}>Erneut laden</button>}
       <p role="status" aria-live="polite">{feedback}</p>
