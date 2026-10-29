@@ -1,5 +1,6 @@
 const { chromium } = require('playwright');
 const assert = require('node:assert/strict');
+const origin=process.env.PROMO_ORIGIN || 'http://127.0.0.1:5173';
 (async () => {
  const browser = await chromium.launch({executablePath:process.env.PROMO_BROWSER || 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',headless:true});
  try {
@@ -22,7 +23,7 @@ const assert = require('node:assert/strict');
    else if(url.pathname==='/api/projects/selected')data={ok:true,project};
    else if(url.pathname==='/api/projects/selected/media')data={ok:true,media:{original:{id:'original',mimeType:'image/webp'},optimized:{id:'optimized',mimeType:'image/webp'}},photoOptimization:{state:'completed'}};
    else if(url.pathname==='/api/projects/selected/content')data={ok:true,content:{googleBusiness:'Facebook fixture text',socialMedia:'Instagram fixture text',websiteReference:'Pinterest fixture text'}};
-   else if(url.pathname==='/api/projects/selected/media/optimized'){await route.fulfill({response:await page.request.get('http://127.0.0.1:5173/visual/integrations/friseur-optimized.webp')});return;}
+   else if(url.pathname==='/api/projects/selected/media/optimized'){await route.fulfill({response:await page.request.get(origin+'/visual/integrations/friseur-optimized.webp')});return;}
    else if(url.pathname==='/api/projects/selected/publish' && req.method()==='POST'){
     posts.push({body:req.postDataJSON(),key:req.headers()['idempotency-key']});
     if(publishState==='unknown'){await route.abort('failed');return;}
@@ -30,7 +31,7 @@ const assert = require('node:assert/strict');
    }
    await route.fulfill({status,json:data});
   });
-  loggedIn=true;await page.goto('http://127.0.0.1:5173/app/projects/selected/publish');
+  loggedIn=true;await page.goto(origin+'/app/projects/selected/publish');
   await page.getByRole('heading',{name:'Selected fixture project',exact:true}).waitFor();
   await page.locator('.mvp-integration-card').filter({hasText:'Instagram'}).getByRole('button').click();
   assert.equal(await page.locator('textarea').inputValue(),'Instagram fixture text');

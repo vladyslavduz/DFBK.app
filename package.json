@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "render:promo": "node scripts/render-promo.cjs",
-    "test:publishing-ui": "node scripts/public-promo-share-smoke.cjs && node scripts/publishing-smoke.cjs",
+    "test:publishing-ui": "node scripts/public-promo-share-smoke.cjs && node scripts/publishing-smoke.cjs && node scripts/private-project-result-smoke.cjs",
     "typecheck:frontend": "tsc -p tsconfig.publishing.json --noEmit",
     "preview": "vite preview",
     "test:local": "node --experimental-sqlite --test --test-concurrency=1",

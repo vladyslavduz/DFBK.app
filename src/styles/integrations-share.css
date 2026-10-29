@@ -213,3 +213,19 @@
     min-height: 46px;
   }
 }
+
+/* Private project result, using the established palette and type stack. */
+.project-result { overflow-wrap: anywhere; }
+.project-result__images { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin: 24px 0; }
+.project-result__images figure { margin: 0; padding: 12px; border: 1px solid #C8D7E6; border-radius: 18px; background: #fff; }
+.project-result__images img { display: block; width: 100%; height: 260px; object-fit: contain; border-radius: 11px; }
+.project-result__images figcaption { margin-top: 10px; color: #102a43; font-weight: 700; }
+.project-result .share-hub__intro h2, .project-result .inline-notice h2 { font-size: clamp(1.2rem, 4vw, 1.6rem); line-height: 1.3; }
+.project-result .publishing-preview { min-width: 0; }
+.project-result .publishing-preview textarea { box-sizing: border-box; max-width: 100%; }
+.project-result__help { color: #607487; line-height: 1.6; }
+@media (max-width: 640px) {
+  .project-result__images { grid-template-columns: 1fr; }
+  .project-result__images img { height: 220px; }
+  .project-result .publishing-actions > * { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+}

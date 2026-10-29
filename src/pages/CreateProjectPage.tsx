@@ -1,17 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import AppIcon from '../components/AppIcon';
 import AppLink from '../components/AppLink';
-import ChannelCard from '../components/ChannelCard';
 import DescriptionInput from '../components/DescriptionInput';
 import PhotoUploader from '../components/PhotoUploader';
 import ProcessingState from '../components/ProcessingState';
-import ProjectImageViewer from '../components/ProjectImageViewer';
-import { projectStatusLabel, useUserArea, type AppProject } from '../contexts/UserAreaContext';
+import { useUserArea, type AppProject } from '../contexts/UserAreaContext';
+import { navigate } from '../lib/router';
 import { ApiError } from '../lib/api';
 import { projectGenerationErrorMessage } from '../lib/project-generation';
 import { getProjectMediaUrl } from '../services/projects';
 
-type Step = 1 | 2 | 3 | 4;
+type Step = 1 | 2 | 3;
 
 function projectFlowError(error: unknown) {
   if (error instanceof ApiError) {
@@ -23,15 +22,13 @@ function projectFlowError(error: unknown) {
 }
 
 export default function CreateProjectPage() {
-  const { createProject, generateProjectContent, getProject, getProjectContent, getProjectMedia, uploadProjectMedia, updateContent } = useUserArea();
+  const { createProject, generateProjectContent, getProject, getProjectContent, getProjectMedia, uploadProjectMedia } = useUserArea();
   const [step, setStep] = useState<Step>(1);
   const [image, setImage] = useState('');
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [description, setDescription] = useState('');
-  const [project, setProject] = useState<AppProject | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
-  const [mediaLoadError, setMediaLoadError] = useState('');
   const [trialLimitReached, setTrialLimitReached] = useState(false);
   const submittingRef = useRef(false);
   const createdProjectRef = useRef<AppProject | null>(null);
@@ -46,7 +43,6 @@ export default function CreateProjectPage() {
     setImage(URL.createObjectURL(file));
     mediaUploadedRef.current = false;
     setSubmitError('');
-    setMediaLoadError('');
   }
 
   const finishProcessing = useCallback(async () => {
@@ -54,7 +50,6 @@ export default function CreateProjectPage() {
     submittingRef.current = true;
     setSubmitting(true);
     setSubmitError('');
-    setMediaLoadError('');
     setStep(3);
 
     try {
@@ -94,7 +89,7 @@ export default function CreateProjectPage() {
           };
         } catch (mediaError) {
           if (!uploadedOriginal) throw mediaError;
-          setMediaLoadError('Die Bildversionen konnten noch nicht vollständig geladen werden. Das Original bleibt verfügbar.');
+          // The result page reads and reports missing image versions independently.
         }
 
         createdProjectRef.current = createdProject;
@@ -119,8 +114,7 @@ export default function CreateProjectPage() {
       const content = createdProject.content || await getProjectContent(createdProject.id);
       if (!content) throw new ApiError(500, 'PROJECT_CONTENT_UNAVAILABLE');
 
-      setProject({ ...createdProject, content });
-      setStep(4);
+      navigate('/app/projects/' + encodeURIComponent(createdProject.id) + '/publish');
     } catch (error) {
       if (error instanceof ApiError && error.code === 'TRIAL_PROJECT_LIMIT_REACHED') {
         setTrialLimitReached(true);
@@ -156,26 +150,7 @@ export default function CreateProjectPage() {
       {step === 1 && <PhotoUploader preview={image} onSelect={selectPhoto} onContinue={() => { if (createdProjectRef.current) void finishProcessing(); else setStep(2); }} />}
       {step === 2 && <DescriptionInput value={description} onChange={setDescription} onBack={() => setStep(1)} onContinue={finishProcessing} />}
       {step === 3 && <ProcessingState includesPhotoOptimization error={submitError} retrying={submitting} onRetry={finishProcessing} onChangePhoto={createdProjectRef.current && createdProjectRef.current.photoOptimization.state !== 'available' ? undefined : () => { setSubmitError(''); setStep(1); }} />}
-      {step === 4 && project?.content && (
-        <section className="wizard-result">
-          <header className="wizard-heading center"><span className="result-check"><AppIcon name="check" /></span><span className="app-kicker">Schritt 4</span><h1>Dein Content ist fertig</h1><p>Kopiere, lade herunter oder teile deinen fertigen Content direkt weiter.</p></header>
 
-          <ProjectImageViewer
-            projectId={project.id}
-            originalImage={project.originalImage}
-            optimizedImage={project.optimizedImage}
-            mediaLoadError={mediaLoadError}
-            photoOptimizationState={project.photoOptimization.state}
-            onImagesChange={(originalImage, optimizedImage) => setProject(current => current ? { ...current, originalImage, optimizedImage } : current)}
-            onOptimizationStateChange={state => setProject(current => current ? { ...current, photoOptimization: { state } } : current)}
-          />
-
-          <div className="result-photo-summary"><div><span className={`project-status status-${project.status}`}><AppIcon name="check" />{projectStatusLabel(project.status)}</span><h2>{project.title}</h2>{project.description && <p>{project.description}</p>}</div></div>
-          <div className="channel-list">{(['google', 'social', 'website'] as const).map(channel => <ChannelCard channel={channel} value={project.content?.[channel] || ''} onChange={value => updateContent(project.id, channel, value)} projectId={project.id} projectTitle={project.title} downloadImage={project.optimizedImage || project.originalImage} key={channel} />)}</div>
-          <div className="visibility-panel"><div><span className="app-kicker">Sichtbar werden</span><h2>Bereit für deine Kanäle</h2><p>Kopiere, lade herunter oder teile deinen fertigen Content für Website, Google und Social Media.</p></div><div className="channel-pills"><span>Google</span><span>Website</span><span>Instagram</span><span>Facebook</span></div></div>
-          <div className="wizard-result-actions"><AppLink className="button" to={`/app/projects/${project.id}`}>Projekt öffnen<AppIcon name="arrow" /></AppLink><AppLink className="button button-secondary" to="/app">Zur Übersicht</AppLink></div>
-        </section>
-      )}
     </div>
   );
 }

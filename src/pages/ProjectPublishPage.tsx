@@ -6,13 +6,23 @@ import PublishingPanel from '../components/PublishingPanel';
 import { type PublishingChannel } from '../config/publishing';
 import { navigate } from '../lib/router';
 import '../styles/integrations-share.css';
+import AppLink from '../components/AppLink';
+import { useAuth } from '../contexts/AuthContext';
+import type { ProjectMediaResponse } from '../types/models';
 export default function ProjectPublishPage({ id }: { id: string }) {
   const { getProject, getProjectMedia, getProjectContent, plan, planLoading, reloadPlan } = useUserArea();
   const { connections, publish, getPublication, attempt, saveAttempt, draft } = useSocialPublishing();
-  const [project, setProject] = useState<AppProject | null>(null);
-  const [content, setContent] = useState<ProjectContent | null>(null);
-  const [mediaId, setMediaId] = useState('');
-  const [optimized, setOptimized] = useState(false);
+  const { user } = useAuth();
+  const [snapshot, setSnapshot] = useState<{ ownerId: string; project: AppProject; content: ProjectContent | null; media: ProjectMediaResponse } | null>(null);
+  const [revision, setRevision] = useState(0);
+  const [useOriginal, setUseOriginal] = useState(false);
+  // Hide the previous project's/account's snapshot before the next effect runs.
+  const current = snapshot?.project.id === id && snapshot.ownerId === user?.id ? snapshot : null;
+  const project = current?.project;
+  const content = current?.content;
+  const media = current?.media;
+  const optimized = Boolean(media?.media.optimized && !useOriginal);
+  const mediaId = (optimized ? media?.media.optimized : media?.media.original)?.id || '';
   const [error, setError] = useState('');
   const [result, setResult] = useState('');
   const inFlight = useRef(false);
@@ -20,15 +30,16 @@ export default function ProjectPublishPage({ id }: { id: string }) {
   const [terminalRequest, setTerminalRequest] = useState<string | null>(null);
   const [continuableRequest, setContinuableRequest] = useState<string | null>(null);
   useEffect(() => {
-    let active = true; setProject(null); setContent(null); setMediaId(''); setError('');
-    void Promise.all([getProject(id), getProjectMedia(id), getProjectContent(id)]).then(([p, m, c]) => {
-      if (!active) return;
-      const selected = m.media.optimized || m.media.original;
-      if (!selected || !c) { setError('Für dieses Projekt fehlen Bild oder fertige Inhalte.'); return; }
-      setProject(p); setContent(c); setMediaId(selected.id); setOptimized(Boolean(m.media.optimized));
+    let active = true;
+    setSnapshot(null); setUseOriginal(false); setError(''); setResult('');
+    setTerminalRequest(null); setContinuableRequest(null);
+    if (!user) return;
+    const ownerId = user.id;
+    void Promise.all([getProject(id), getProjectMedia(id), getProjectContent(id)]).then(([project, media, content]) => {
+      if (active && project.id === id) setSnapshot({ ownerId, project, media, content });
     }).catch(() => { if (active) setError('Projekt konnte nicht geladen werden oder ist nicht zugänglich.'); });
     return () => { active = false; };
-  }, [id, getProject, getProjectMedia, getProjectContent]);
+  }, [id, user?.id, revision, getProject, getProjectMedia, getProjectContent]);
   const texts = useMemo(() => {
     if (!content || !project) return null;
     // Existing KI results are starting points, never claim a new paid AI generation.
@@ -79,12 +90,32 @@ export default function ProjectPublishPage({ id }: { id: string }) {
   }
   if (planLoading) return <div className="app-page">Zugang wird geprüft …</div>;
   if (plan.source !== 'backend' || plan.status !== 'active' || !plan.features.share) return <div className="app-page"><h1>Veröffentlichung vorbereiten</h1><p>Zugang konnte nicht bestätigt werden. Bitte lade deinen Tarifstatus erneut.</p><button type="button" onClick={() => void reloadPlan()}>Status erneut laden</button></div>;
-  if (error) return <div className="app-page"><h1>Veröffentlichung vorbereiten</h1><p role="alert">{error}</p></div>;
-  if (!project || !texts) return <div className="app-page">Projekt wird geladen …</div>;
-  return <div className="app-page"><header className="app-page-heading"><h1>{project.title}</h1><p>Nur Materialien dieses Projekts. Prüfe die kanalbezogenen Ausgangstexte aus deinen vorhandenen KI-Ergebnissen vor der Veröffentlichung.</p></header>
-    <button className="button button-secondary" type="button" onClick={() => navigate('/app/integrations')}>Konten verbinden</button>
+  if (error) return <div className="app-page"><h1>Projekt nicht verfügbar</h1><p role="alert">{error}</p><button className="button" type="button" onClick={() => setRevision(value => value + 1)}>Erneut laden</button><AppLink className="back-link" to="/app/projects">Zu meinen Projekten</AppLink></div>;
+  if (!project || !media) return <div className="app-page" role="status">Projekt wird geladen …</div>;
+  const ready = ['ready', 'finished'].includes(project.status) && Boolean(texts && Object.values(texts).every(text => text.trim()));
+  const processing = project.status === 'processing' || media.photoOptimization.state === 'processing';
+  const canPrepare = ready && !processing && Boolean(mediaId) && (optimized || useOriginal);
+  return <div className="app-page project-result">
+    <AppLink className="back-link" to={'/app/projects/' + encodeURIComponent(id)}>← Projektdetails</AppLink>
+    <header className="app-page-heading"><h1>{project.title}</h1><p>Wähle, wo du dein Ergebnis verwenden möchtest. Prüfe dafür dein Bild und den passenden Ausgangstext.</p></header>
+    <section className="project-result__images" aria-label="Bildversionen dieses Projekts">
+      {media.media.original && <figure><img src={getProjectMediaUrl(id, media.media.original.id)} alt="Hochgeladenes Original dieses Projekts" /><figcaption>Dein hochgeladenes Foto</figcaption></figure>}
+      {media.media.optimized && <figure><img src={getProjectMediaUrl(id, media.media.optimized.id)} alt="Optimierte Version dieses Projekts" /><figcaption>Optimiertes Foto{optimized && canPrepare ? ' · für den Beitrag ausgewählt' : ''}</figcaption></figure>}
+    </section>
+    {!canPrepare && <section className="inline-notice" aria-label="Materialstatus">
+      <h2>{processing ? 'Dein Projekt wird noch verarbeitet' : project.status === 'failed' ? 'Die Verarbeitung wurde nicht abgeschlossen' : !ready ? 'Deine Texte sind noch nicht vollständig verfügbar' : !media.media.original && !media.media.optimized ? 'Das Projektbild ist nicht verfügbar' : 'Das optimierte Foto ist noch nicht verfügbar'}</h2>
+      <p>{processing ? 'Lade den Status erneut, sobald die Verarbeitung abgeschlossen ist.' : 'Prüfe dein Projekt oder lade die gespeicherten Materialien erneut.'} Hier wird keine neue Erstellung gestartet.</p>
+      <div className="publishing-actions">
+        <button className="button button-secondary" type="button" onClick={() => setRevision(value => value + 1)}>Materialstatus erneut laden</button>
+        {ready && !processing && !media.media.optimized && media.media.original && <button className="button" type="button" onClick={() => setUseOriginal(true)}>Mit dem Originalfoto fortfahren</button>}
+        <AppLink className="button button-secondary" to={'/app/projects/' + encodeURIComponent(id)}>Projekt prüfen</AppLink>
+      </div>
+    </section>}
+    {canPrepare && !optimized && <p className="inline-notice" role="status">Du verwendest ausdrücklich dein Originalfoto. Es wurde kein optimiertes Foto ausgewählt.</p>}
     {attempt?.projectId === id && <section className="inline-notice"><p>Gespeicherter Veröffentlichungsversuch: erst klären, dann einen neuen Beitrag vorbereiten.</p><button type="button" disabled={checking} onClick={() => void recover()}>Gespeicherten Versuch prüfen</button>{continuableRequest && continuableRequest === attempt.requestId && <button type="button" disabled={checking} onClick={() => void recover(true)}>Denselben ausstehenden Versuch fortsetzen</button>}{terminalRequest === attempt.requestId && terminalRequest && <button type="button" disabled={checking} onClick={() => { if (window.confirm('Dieser Versuch ist abgeschlossen. Einen weiteren Beitrag vorbereiten?')) { saveAttempt(null); setTerminalRequest(null); setResult(''); } }}>Weiteren Beitrag vorbereiten</button>}<p role="status">{result}</p></section>}
     {attempt && attempt.projectId !== id && <p role="alert">Ein ungeklärter Veröffentlichungsversuch eines anderen Projekts ist gespeichert. Öffne zuerst dieses Projekt und prüfe seinen Status.</p>}
-    <PublishingPanel key={id} title={project.title} imageUrl={getProjectMediaUrl(id, mediaId)} texts={texts} onDirectPublish={send} />
+    {canPrepare && texts && <PublishingPanel key={id + ':' + mediaId} title={project.title} imageUrl={getProjectMediaUrl(id, mediaId)} texts={texts} onDirectPublish={send} />}
+    <p className="project-result__help">Die Texte stammen aus deinen vorhandenen KI-Ergebnissen und lassen sich pro Kanal bearbeiten. Download, Kopieren oder Teilen bestätigt noch keine Veröffentlichung.</p>
+    <button className="button button-secondary" type="button" onClick={() => navigate('/app/integrations')}>Verbundene Konten verwalten</button>
   </div>;
 }
