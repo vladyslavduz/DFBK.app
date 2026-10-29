@@ -1,0 +1,9 @@
+.channels-integrations .channels-materials { display: grid; gap: 12px; margin-bottom: 24px; }
+.channels-integrations .channels-materials h2 { margin: 0; }
+.channels-integrations label { display: grid; gap: 7px; color: var(--navy); }
+.channels-integrations select { width: 100%; max-width: 100%; min-height: 46px; padding: 10px; border: 1px solid var(--border); border-radius: 10px; background: #fff; color: var(--text); font: inherit; }
+.channels-integrations .channels-help { margin: 0; color: var(--muted); line-height: 1.5; overflow-wrap: anywhere; }
+.channels-integrations .social-connection-card { min-width: 0; }
+.channels-integrations .social-connection-actions .button { white-space: normal; text-align: center; }
+.channels-integrations .channels-cms { display: grid; gap: 10px; padding: 12px; border: 1px solid var(--border); border-radius: 12px; }
+.channels-integrations .channels-planner { margin-top: 24px; }
