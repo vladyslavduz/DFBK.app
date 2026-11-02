@@ -13,6 +13,7 @@ export interface Env {
   META_REDIRECT_URI?: string;
   META_GRAPH_VERSION?: string;
   SOCIAL_ENABLED?: string;
+  SCHEDULER_READ_ENABLED?: string;
   SOCIAL_PUBLIC_ORIGIN?: string;
   SOCIAL_TOKEN_ENCRYPTION_KEY?: string;
   SOCIAL_MEDIA_SIGNING_KEY?: string;
