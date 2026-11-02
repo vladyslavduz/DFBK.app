@@ -34,8 +34,8 @@ export default function AppIntegrationsPage() {
   const [helpChannel, setHelpChannel] = useState<string | null>(null);
   // A project is chosen explicitly; never substitute the most recent project.
   const project = projects.find(item => item.id === selectedProject);
-  function prepare() {
-    if (project) navigate(`/app/projects/${encodeURIComponent(project.id)}/publish`);
+  function prepare(channel: string) {
+    if (project) navigate(`/app/projects/${encodeURIComponent(project.id)}/publish?channel=${encodeURIComponent(channel)}`);
     else document.getElementById('integration-project')?.focus();
   }
   const params = useMemo(() => new URLSearchParams(window.location.search), []);
@@ -91,7 +91,7 @@ export default function AppIntegrationsPage() {
         </select></label>
         {projectsError && <><p role="alert">{projectsError}</p><button type="button" onClick={() => void reloadProjects()}>Projekte erneut laden</button></>}
         {!projectsLoading && !projectsError && !projects.length && <button className="button" type="button" onClick={() => navigate('/app/new')}>Erstes Projekt erstellen</button>}
-        <p className="channels-help">Im gewählten Projekt prüfst du Bild und Text pro Kanal. Download, Kopieren und System-Teilen sind von einer API-Verbindung unabhängig und bestätigen keine Veröffentlichung.</p>
+        <p className="channels-help">Im gewählten Projekt prüfst du Bild und Text pro Kanal. Download, Kopieren und die manuelle Übergabe sind von einer API-Verbindung unabhängig und bestätigen keine Veröffentlichung.</p>
       </section>
       <div className="social-connection-grid">
         {integrationChannels.map(provider => {
@@ -105,7 +105,7 @@ export default function AppIntegrationsPage() {
           return (
             <article className="social-connection-card" key={provider.id} aria-label={provider.label} data-channel={provider.id}>
               <div className="social-provider-heading">
-                <img src={'/visual/integrations/icons/' + provider.icon} alt="" />
+                <button className="channel-logo-action" type="button" aria-label={provider.label + ': Materialien öffnen'} onClick={() => prepare(provider.id)}><img src={'/visual/integrations/icons/' + provider.icon} alt="" /></button>
                 <div>
                   <strong>{provider.label}</strong>
                   <span>{connection?.connected && connection.accountName ? connection.accountName : provider.connectionProvider ? availabilityText(provider.connectionProvider, connection?.availability) : 'Manuelle Übergabe / Export'}</span>
@@ -131,7 +131,7 @@ export default function AppIntegrationsPage() {
                 <p className="channels-help">Für {cms}: Öffne die Materialien deines gewählten Projekts, wähle Website / Blog, lade das Bild herunter und kopiere den Text in deinen Editor. Dort prüfst und veröffentlichst du selbst. Die Plattformwahl verbindet kein Konto.</p>
               </div>}
               <div className="social-connection-actions">
-                <button className="button button-secondary" type="button" onClick={prepare}>{project ? 'Projektmaterialien öffnen' : 'Projekt für Materialien wählen'}</button>
+                <button className="button button-secondary" type="button" onClick={() => prepare(provider.id)}>{project ? 'Projektmaterialien öffnen' : 'Projekt für Materialien wählen'}</button>
                 {!isMeta && <button className="button button-secondary" type="button" aria-expanded={helpChannel === provider.id} onClick={() => setHelpChannel(helpChannel === provider.id ? null : provider.id)}>Automatisierung: Voraussetzungen</button>}
                 {isMeta && connection?.availability === 'available' && connection.status === 'reconnect_required' && !showCandidates && (
                   <button className="button" type="button" onClick={() => connect(metaProvider!)}>Erneut verbinden</button>

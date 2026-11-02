@@ -4,7 +4,6 @@ import AppIcon from './AppIcon';
 import { useSocialPublishing } from '../contexts/SocialPublishingContext';
 import { useUserArea, type ContentChannel } from '../contexts/UserAreaContext';
 import { getProjectMediaUrl, projectService } from '../services/projects';
-import { prepareProjectShareImage, shareProjectContent, type ShareOutcome } from '../services/share';
 
 const labels: Record<ContentChannel, { title: string; description: string }> = {
   google: { title: 'Google Business', description: 'Für dein Google Business Profil' },
@@ -21,21 +20,12 @@ type Props = {
   downloadImage?: string | null;
 };
 
-function shareFeedback(outcome: ShareOutcome) {
-  if (outcome === 'shared') return 'Bild und Text wurden an das Teilen-Menü übergeben.';
-  if (outcome === 'text-shared') return 'Text wurde an das Teilen-Menü übergeben. Das Bild kannst du separat herunterladen.';
-  if (outcome === 'unsupported') return 'Teilen wird hier nicht unterstützt. Nutze Kopieren und Bild herunterladen.';
-  return '';
-}
-
 export default function ChannelCard({ channel, value, onChange, projectId, projectTitle, downloadImage }: Props) {
   const { plan } = useUserArea();
   const { draft, saveDraft } = useSocialPublishing();
   const [editing, setEditing] = useState(false);
   const [socialDraft, setSocialDraft] = useState(value);
   const [copied, setCopied] = useState(false);
-  const [sharing, setSharing] = useState(false);
-  const [shareMessage, setShareMessage] = useState('');
   const [socialImage, setSocialImage] = useState<{ url: string; source: 'optimized' | 'original' } | null>(null);
   const shareEnabled = plan.source === 'backend' && plan.status === 'active' && plan.features.share;
   const displayedValue = channel === 'social' ? socialDraft : value;
@@ -44,10 +34,6 @@ export default function ChannelCard({ channel, value, onChange, projectId, proje
     if (!editing && channel === 'social') setSocialDraft(value);
   }, [channel, editing, value]);
 
-  useEffect(() => {
-    if (!shareEnabled) return;
-    void prepareProjectShareImage(projectId, downloadImage || '');
-  }, [downloadImage, projectId, shareEnabled]);
 
   useEffect(() => {
     if (channel !== 'social') return;
@@ -83,21 +69,11 @@ export default function ChannelCard({ channel, value, onChange, projectId, proje
     window.setTimeout(() => setCopied(false), 1600);
   }
 
-  async function share() {
-    if (!shareEnabled || sharing) return;
-    setSharing(true);
-    setShareMessage('');
-    try {
-      const outcome = await shareProjectContent({
-        projectId,
-        title: projectTitle,
-        text: displayedValue,
-        imageVersion: downloadImage || '',
-      });
-      if (outcome !== 'cancelled') setShareMessage(shareFeedback(outcome));
-    } finally {
-      setSharing(false);
-    }
+  function prepareShare() {
+    if (!shareEnabled) return;
+    const target = channel === 'google' ? 'google_business' : channel === 'website' ? 'website' : 'instagram';
+    saveDraft({ projectId, channel: target, caption: displayedValue, providers: [], mediaId: null, useOptimizedImage: true });
+    navigate('/app/projects/' + encodeURIComponent(projectId) + '/publish?channel=' + target);
   }
 
   function updateDraft(next: string) {
@@ -126,11 +102,10 @@ export default function ChannelCard({ channel, value, onChange, projectId, proje
           <button type="button" onClick={() => setEditing(current => !current)}><AppIcon name="edit" />{editing ? 'Übernehmen' : 'Bearbeiten'}</button>
           <button type="button" onClick={() => void copy()}><AppIcon name={copied ? 'check' : 'copy'} />{copied ? 'Kopiert' : 'Kopieren'}</button>
           {downloadImage && <a className="channel-download-action" href={downloadImage} download="dfbk-projektbild"><AppIcon name="download" />Bild herunterladen</a>}
-          <button className="channel-share-action" type="button" onClick={() => void share()} disabled={!shareEnabled || sharing} title={shareEnabled ? 'Mit dem System-Menü teilen' : 'Teilen ist aktuell nicht verfügbar'}>
-            <AppIcon name="share" />{sharing ? 'Öffnet …' : 'Teilen'}
+          <button className="channel-share-action" type="button" onClick={prepareShare} disabled={!shareEnabled} title={shareEnabled ? 'Kanal wählen und Beitrag vorbereiten' : 'Teilen ist aktuell nicht verfügbar'}>
+            <AppIcon name="share" />Teilen
           </button>
         </div>
-        {shareMessage && <p className="channel-share-note" role="status">{shareMessage}</p>}
       </article>
 
 

@@ -3,7 +3,7 @@ import { useUserArea, type AppProject, type ProjectContent } from '../contexts/U
 import { useSocialPublishing, connectionForProvider } from '../contexts/SocialPublishingContext';
 import { getProjectMediaUrl } from '../services/projects';
 import PublishingPanel from '../components/PublishingPanel';
-import { type PublishingChannel } from '../config/publishing';
+import { publishingChannels, type PublishingChannel } from '../config/publishing';
 import { navigate } from '../lib/router';
 import '../styles/integrations-share.css';
 import AppLink from '../components/AppLink';
@@ -13,6 +13,8 @@ export default function ProjectPublishPage({ id }: { id: string }) {
   const { getProject, getProjectMedia, getProjectContent, plan, planLoading, reloadPlan } = useUserArea();
   const { connections, publish, getPublication, attempt, saveAttempt, draft } = useSocialPublishing();
   const { user } = useAuth();
+  const requestedChannel = new URLSearchParams(window.location.search).get('channel');
+  const initialChannel = publishingChannels.find(channel => channel.id === requestedChannel)?.id;
   const [snapshot, setSnapshot] = useState<{ ownerId: string; project: AppProject; content: ProjectContent | null; media: ProjectMediaResponse } | null>(null);
   const [revision, setRevision] = useState(0);
   const [useOriginal, setUseOriginal] = useState(false);
@@ -43,13 +45,18 @@ export default function ProjectPublishPage({ id }: { id: string }) {
   const texts = useMemo(() => {
     if (!content || !project) return null;
     // Existing KI results are starting points, never claim a new paid AI generation.
-    return {
-      instagram: draft?.projectId === id ? draft.caption : content.social, facebook: content.google,
+    const prepared = {
+      instagram: content.social, facebook: content.google,
       pinterest: project.title + '\n\n' + content.website,
       whatsapp: content.social, x: content.social, linkedin: content.website,
       email: content.website, google_business: content.google, website: content.website,
     } as Record<PublishingChannel, string>;
-  }, [content, project, draft, id]);
+    if (draft?.projectId === id) {
+      const draftChannel = publishingChannels.find(channel => channel.id === draft.channel)?.id || 'instagram';
+      prepared[draftChannel] = draft.caption;
+    }
+    return prepared;
+  }, [content, project, draft, id, initialChannel]);
   async function send(channel: 'instagram' | 'facebook', caption: string) {
     if (inFlight.current) return 'Ein Vorgang läuft bereits.';
     if (attempt) return 'Ein gespeicherter Versuch liegt vor. Prüfe zuerst seinen Status oder setze exakt denselben Versuch fort.';
@@ -114,7 +121,7 @@ export default function ProjectPublishPage({ id }: { id: string }) {
     {canPrepare && !optimized && <p className="inline-notice" role="status">Du verwendest ausdrücklich dein Originalfoto. Es wurde kein optimiertes Foto ausgewählt.</p>}
     {attempt?.projectId === id && <section className="inline-notice"><p>Gespeicherter Veröffentlichungsversuch: erst klären, dann einen neuen Beitrag vorbereiten.</p><button type="button" disabled={checking} onClick={() => void recover()}>Gespeicherten Versuch prüfen</button>{continuableRequest && continuableRequest === attempt.requestId && <button type="button" disabled={checking} onClick={() => void recover(true)}>Denselben ausstehenden Versuch fortsetzen</button>}{terminalRequest === attempt.requestId && terminalRequest && <button type="button" disabled={checking} onClick={() => { if (window.confirm('Dieser Versuch ist abgeschlossen. Einen weiteren Beitrag vorbereiten?')) { saveAttempt(null); setTerminalRequest(null); setResult(''); } }}>Weiteren Beitrag vorbereiten</button>}<p role="status">{result}</p></section>}
     {attempt && attempt.projectId !== id && <p role="alert">Ein ungeklärter Veröffentlichungsversuch eines anderen Projekts ist gespeichert. Öffne zuerst dieses Projekt und prüfe seinen Status.</p>}
-    {canPrepare && texts && <PublishingPanel key={id + ':' + mediaId} title={project.title} imageUrl={getProjectMediaUrl(id, mediaId)} texts={texts} onDirectPublish={send} />}
+    {canPrepare && texts && <PublishingPanel key={id + ':' + mediaId + ':' + (initialChannel || '')} initialChannel={initialChannel} title={project.title} imageUrl={getProjectMediaUrl(id, mediaId)} texts={texts} onDirectPublish={send} />}
     <p className="project-result__help">Die Texte stammen aus deinen vorhandenen KI-Ergebnissen und lassen sich pro Kanal bearbeiten. Download, Kopieren oder Teilen bestätigt noch keine Veröffentlichung.</p>
     <button className="button button-secondary" type="button" onClick={() => navigate('/app/integrations')}>Verbundene Konten verwalten</button>
   </div>;

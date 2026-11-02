@@ -1,3 +1,4 @@
+import type { PublishingChannel } from '../config/publishing';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useAuth } from './AuthContext';
 import { ApiError } from '../lib/api';
@@ -10,6 +11,7 @@ import {
 } from '../services/social';
 
 export type SocialDraft = {
+  channel?: PublishingChannel;
   projectId: string;
   caption: string;
   providers: Array<'instagram' | 'facebook'>;

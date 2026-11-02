@@ -7,3 +7,7 @@
 .channels-integrations .social-connection-actions .button { white-space: normal; text-align: center; }
 .channels-integrations .channels-cms { display: grid; gap: 10px; padding: 12px; border: 1px solid var(--border); border-radius: 12px; }
 .channels-integrations .channels-planner { margin-top: 24px; }
+
+.channels-integrations .channel-logo-action { display: inline-flex; align-items: center; justify-content: center; padding: 4px; border: 0; background: transparent; cursor: pointer; flex: 0 0 auto; }
+.channels-integrations .channel-logo-action img { width: 32px; height: 32px; }
+.channels-integrations .channel-logo-action:focus-visible { outline: 3px solid #2969ff; border-radius: 8px; }
