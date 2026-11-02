@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { publishingChannels, type PublishingChannel } from '../config/publishing';
+import { cmsPlatforms } from '../services/promo-share';
+import { projectChannelLink } from '../services/project-channel-share';
 type Props = {
+  initialChannel?: PublishingChannel;
   title: string;
   imageUrl: string;
   texts: Record<PublishingChannel, string>;
@@ -8,8 +11,8 @@ type Props = {
   squareVideoUrl?: string;
   onDirectPublish?: (channel: 'instagram' | 'facebook', text: string) => Promise<string>;
 };
-export default function PublishingPanel({ title, imageUrl, texts, videoUrl, squareVideoUrl, onDirectPublish }: Props) {
-  const [selected, setSelected] = useState<PublishingChannel | null>(null);
+export default function PublishingPanel({ initialChannel, title, imageUrl, texts, videoUrl, squareVideoUrl, onDirectPublish }: Props) {
+  const [selected, setSelected] = useState<PublishingChannel | null>(initialChannel || null);
   const [drafts, setDrafts] = useState(texts);
   const [file, setFile] = useState<File | null>(null);
   const [preparing, setPreparing] = useState(false);
@@ -18,7 +21,8 @@ export default function PublishingPanel({ title, imageUrl, texts, videoUrl, squa
   const [square, setSquare] = useState(false);
   const activeVideo = square && squareVideoUrl ? squareVideoUrl : videoUrl;
   const [busy, setBusy] = useState(false);
-  const selectionVersion = useRef(0);
+  const preview = useRef<HTMLDivElement>(null);
+  const [cms, setCms] = useState<string>(cmsPlatforms[0]);
   const [preparationVersion, setPreparationVersion] = useState(0);
   useEffect(() => { setDrafts(texts); }, [texts]);
   useEffect(() => {
@@ -50,21 +54,11 @@ export default function PublishingPanel({ title, imageUrl, texts, videoUrl, squa
     return () => { active = false; };
   }, [selected, format, activeVideo, imageUrl, preparationVersion]);
   const channel = publishingChannels.find(item => item.id === selected);
-  function choose(id: PublishingChannel) { selectionVersion.current++; setPreparationVersion(value => value + 1); setSelected(id); setSquare(['facebook', 'x', 'linkedin', 'google_business', 'website', 'email'].includes(id)); setFormat(videoUrl ? 'video' : 'image'); }
-  async function share() {
-    if (!selected || !file) return;
-    if (!navigator.share || !navigator.canShare?.({ files: [file] })) {
-      if (format === 'video') { setFormat('image'); setFeedback('Videodatei wird hier nicht unterstützt. Bild wird vorbereitet.'); }
-      else setFeedback('Datei-Teilen ist hier nicht verfügbar. Lade das Bild herunter und kopiere den Text.');
-      return;
-    }
-    const version = selectionVersion.current;
-    try { await navigator.share({ title, text: drafts[selected], files: [file] }); if (version === selectionVersion.current) setFeedback('An das gewählte Systemziel übergeben. Dies bestätigt keine Veröffentlichung.'); }
-    catch (error) {
-      if (version !== selectionVersion.current || (error instanceof DOMException && error.name === 'AbortError')) return;
-      setFeedback('Übergabe nicht abgeschlossen. Nutze Download und Text kopieren.');
-    }
-  }
+  function choose(id: PublishingChannel) { setPreparationVersion(value => value + 1); setSelected(id); setSquare(['facebook', 'x', 'linkedin', 'google_business', 'website', 'email'].includes(id)); setFormat(videoUrl ? 'video' : 'image'); }
+  useEffect(() => {
+    if (selected) { preview.current?.focus(); preview.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
+  }, [selected, preparationVersion]);
+  const targetUrl = selected && channel ? projectChannelLink(selected, title, drafts[selected]) || channel.url : '';
   async function copy() {
     if (!selected) return;
     try { await navigator.clipboard.writeText(drafts[selected]); setFeedback('Text kopiert.'); }
@@ -79,27 +73,31 @@ export default function PublishingPanel({ title, imageUrl, texts, videoUrl, squa
   }
   return <section className="share-hub" aria-label="Veröffentlichung vorbereiten">
     <div className="share-hub__intro"><h2>Dein Material. Dein Kanal.</h2><p>Wähle einen Kanal, prüfe Bild und Text und bestätige die Übergabe oder Veröffentlichung.</p></div>
-    <div className="mvp-integration-grid">{publishingChannels.map(item => <article className="mvp-integration-card" key={item.id}>
-      <img src={'/visual/integrations/icons/' + item.icon} alt="" /><div><strong>{item.label}</strong><span>Beitrag für diesen Kanal vorbereiten</span></div>
-      <button type="button" onClick={() => choose(item.id)} aria-pressed={selected === item.id}>Beitrag vorbereiten</button>
+    <div className="mvp-integration-grid">{publishingChannels.map(item => <article className="mvp-integration-card private-channel-card" key={item.id}>
+      <button className="private-channel-choice" type="button" onClick={() => choose(item.id)} aria-pressed={selected === item.id} aria-label={item.label + ': Beitrag vorbereiten'}>
+        <img src={'/visual/integrations/icons/' + item.icon} alt="" /><span><strong>{item.label}</strong><span>Beitrag vorbereiten →</span></span>
+      </button>
     </article>)}</div>
-    {selected && channel && <div className="publishing-preview" aria-label={channel.label + ' Vorschau'}>
+    {selected && channel && <div className="publishing-preview" ref={preview} tabIndex={-1} role="region" aria-label={channel.label + ' Vorschau'}>
       <h3>{channel.label} · {title}</h3>
       {format === 'video' && videoUrl ? <video controls playsInline preload="metadata" poster={imageUrl} src={activeVideo} onError={() => setFormat('image')} /> : <img src={imageUrl} alt="Vorschau des ausgewählten Materials" />}
       {videoUrl && <div className="publishing-actions"><button type="button" onClick={() => { setSquare(false); setFormat('video'); }}>Video 9:16</button>{squareVideoUrl && <button type="button" onClick={() => { setSquare(true); setFormat('video'); }}>Video 1:1</button>}<button type="button" onClick={() => setFormat('image')}>Bild verwenden</button></div>}
       <label>Beitragstext für {channel.label}<textarea rows={7} value={drafts[selected]} onChange={event => setDrafts(current => ({ ...current, [selected]: event.target.value }))} /></label>
-      <p>Beim System-Teilen wählst du das Ziel in deinem Gerät. Die Kanal-Schaltfläche kann keine bestimmte App erzwingen.</p>
+      <ol className="private-channel-steps"><li>Datei herunterladen.</li><li>Text prüfen und kopieren.</li><li>{selected === 'website' ? 'Deinen Website-Editor öffnen, Datei und Text einfügen und dort veröffentlichen.' : channel.label + ' öffnen, Datei auswählen und den Beitrag dort bestätigen.'}</li></ol>
+      {selected === 'instagram' && <p>Feed, Story oder Reel wählst du in Instagram. Das Öffnen lädt dein Foto nicht automatisch hoch.</p>}
+      {selected === 'website' && <label>Deine Website-Plattform<select value={cms} onChange={event => setCms(event.target.value)}>{cmsPlatforms.map(name => <option key={name}>{name}</option>)}</select><span>Öffne deinen {cms}-Editor. Dein Website-Konto wird nicht verbunden.</span></label>}
+      <p>{selected === 'whatsapp' || selected === 'x' || selected === 'email' ? 'Der Text wird im Ziel vorbereitet. Die Datei fügst du dort selbst hinzu.' : 'Bild und Text werden beim Öffnen nicht automatisch übertragen.'} Deine Projektdatei bleibt privat. Ein geöffnetes Fenster bestätigt keine Veröffentlichung.</p>
       <div className="publishing-actions">
-        <button className="button" type="button" disabled={preparing || !file || busy} onClick={() => void share()}>{preparing ? 'Datei wird vorbereitet …' : 'Datei und Text teilen'}</button>
         <button className="button button-secondary" type="button" onClick={() => void copy()}>Text kopieren</button>
-        <button className="button button-secondary" type="button" disabled={!file || busy} onClick={download}>Datei herunterladen</button>
-        {channel.url && <a className="button button-secondary" href={channel.url} target={selected === 'email' ? undefined : '_blank'} rel="noopener noreferrer">{channel.label} öffnen</a>}
+        <button className="button" type="button" disabled={preparing || !file || busy} onClick={download}>{preparing ? 'Datei wird vorbereitet …' : 'Datei herunterladen'}</button>
+        {targetUrl && <a className="button button-secondary" href={targetUrl} target={selected === 'email' ? undefined : '_blank'} rel="noopener noreferrer">{channel.label} öffnen</a>}
         {onDirectPublish && (selected === 'instagram' || selected === 'facebook') && <button className="button" disabled={busy || !drafts[selected].trim()} type="button" onClick={async () => {
           if (!window.confirm('Diesen Beitrag jetzt auf dem verbundenen ' + channel.label + '-Konto veröffentlichen?')) return;
           setBusy(true);
           try { setFeedback(await onDirectPublish(selected, drafts[selected])); } catch { setFeedback('Ergebnis unklar. Prüfe den gespeicherten Versuch, bevor du erneut veröffentlichst.'); } finally { setBusy(false); }
         }}>Auf verbundenem Konto veröffentlichen</button>}
       </div>
+      {!preparing && !file && <button type="button" onClick={() => setPreparationVersion(value => value + 1)}>Datei erneut laden</button>}
       <p className="share-hub__note" role="status">{feedback}</p>
     </div>}
   </section>;

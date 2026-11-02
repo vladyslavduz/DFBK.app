@@ -7,6 +7,11 @@ const imageFixture = require('node:fs').readFileSync('public/visual/integrations
  const browser = await chromium.launch({ executablePath: process.env.PROMO_BROWSER || 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe', headless: true });
  try {
   const page = await browser.newPage({viewport:{width:390,height:844}});
+  await page.addInitScript(() => {
+   window.fixtureShares = 0;
+   Object.defineProperty(navigator, 'share', {configurable:true, value:async()=>{window.fixtureShares++; throw Error('Unexpected native share');}});
+   Object.defineProperty(navigator, 'clipboard', {configurable:true, value:{writeText:async text=>{window.fixtureCopied=text;}}});
+  });
   const errors=[]; page.on('pageerror', error=>errors.push(error.message));
   let status='ready', optimization='completed', hasOptimized=true, hasOriginal=true, hasContent=true, forbidden=false, loggedIn=true, delayed=false;
   let releaseSlow, posts=[];
@@ -48,6 +53,41 @@ const imageFixture = require('node:fs').readFileSync('public/visual/integrations
   await page.waitForFunction(()=>[...document.querySelectorAll('button')].some(b=>b.textContent==='Datei herunterladen'&&!b.disabled));
   const [download]=await Promise.all([page.waitForEvent('download'),page.getByRole('button',{name:'Datei herunterladen'}).click()]);
   assert.equal(download.suggestedFilename(),'dfbk-projektbild.jpg');
+  assert.equal(await page.locator('.mvp-integration-card').count(),9);
+  assert.equal(await page.getByRole('button',{name:'Datei und Text teilen',exact:true}).count(),0);
+  await page.getByRole('button',{name:'Text kopieren',exact:true}).click();
+  assert.equal(await page.evaluate(()=>window.fixtureCopied),'selected Instagram-Text');
+  for (const name of ['Facebook','Pinterest','WhatsApp','X','LinkedIn','E-Mail','Google Business','Website / Blog','Instagram']) {
+   await page.getByRole('button',{name:name+': Beitrag vorbereiten',exact:true}).locator('img').click();
+   await page.getByRole('region',{name:name+' Vorschau',exact:true}).waitFor();
+  }
+  await choose('WhatsApp');
+  var href=await page.getByRole('link',{name:'WhatsApp öffnen',exact:true}).getAttribute('href');
+  assert.equal(new URL(href).searchParams.get('text'),'selected Instagram-Text');
+  assert.ok(!href.includes('/api/')&&!href.includes('friseur')&&!href.includes('/app/projects/'));
+  await choose('X');
+  assert.equal(new URL(await page.getByRole('link',{name:'X öffnen',exact:true}).getAttribute('href')).searchParams.get('text'),'selected Instagram-Text');
+  await choose('E-Mail');
+  assert.equal(new URL(await page.getByRole('link',{name:'E-Mail öffnen',exact:true}).getAttribute('href')).searchParams.get('body'),'selected Website-Text');
+  await choose('Website / Blog');
+  assert.equal(await page.locator('.publishing-preview select option').count(),14);
+  await page.locator('.publishing-preview select').selectOption('Joomla');
+  await page.getByText('Öffne deinen Joomla-Editor.',{exact:false}).waitFor();
+  await page.goto(origin+'/app/projects/selected/publish?channel=pinterest');
+  await page.getByRole('region',{name:'Pinterest Vorschau',exact:true}).waitFor();
+  assert.match(await page.locator('textarea').inputValue(),/selected Website-Text/);
+  await page.goto(origin+'/app/projects/selected');
+  const websiteCard=page.locator('.channel-card').filter({hasText:'Website / Referenz'});
+  await websiteCard.getByRole('button',{name:'Bearbeiten',exact:true}).click();
+  await websiteCard.locator('textarea').fill('Edited website fixture');
+  await websiteCard.getByRole('button',{name:'Übernehmen',exact:true}).click();
+  await websiteCard.getByRole('button',{name:'Teilen',exact:true}).click();
+  await page.waitForURL('**/app/projects/selected/publish?channel=website');
+  await page.getByRole('region',{name:'Website / Blog Vorschau',exact:true}).waitFor();
+  assert.equal(await page.locator('textarea').inputValue(),'Edited website fixture');
+  await choose('Instagram');
+  assert.equal(await page.locator('textarea').inputValue(),'selected Instagram-Text','Website draft must not overwrite Instagram');
+  assert.equal(await page.evaluate(()=>window.fixtureShares),0,'Channel selection and old Teilen must never open the OS picker');
   await page.reload();
   await page.locator('.project-result__images img').first().waitFor();
   assert.equal(posts.length,0,'Opening, preparing, downloading and reloading must not mutate or regenerate');
