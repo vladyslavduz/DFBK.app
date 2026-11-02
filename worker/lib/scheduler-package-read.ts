@@ -6,11 +6,11 @@ type ReadonlyDeep<T> = T extends object ? {readonly [K in keyof T]: ReadonlyDeep
 type ItemSummary={id:string;channel:Channel;targetKind:TargetKind;timeSource:'common'|'override';time:ScheduleTime;status:'draft'};
 export type PackageSummary=ReadonlyDeep<{id:string;projectId:string;version:1;status:'draft';createdAt:number;commonTime:ScheduleTime;itemCount:number;earliestAt:number;latestAt:number;items:ItemSummary[]}>;
 export type PackageDetail=ReadonlyDeep<Omit<PackageSummary,'items'>&{items:(ItemSummary&{caption:string;media:{id:string;role:'original'|'optimized';mimeType:string}})[]}>;
-export type PackageReadResult<T>={status:'ok';data:T;cannotDispatch:true}|{status:'invalid'|'not_found'|'integrity_error'|'unavailable';cannotDispatch:true};
+export type PackageReadResult<T>={status:'ok';data:T;cannotDispatch:true}|{status:'invalid'|'not_found'|'integrity_error'|'too_large'|'unavailable';cannotDispatch:true};
 type Cursor={createdAt:number;id:string};
 export type PackageList=ReadonlyDeep<{packages:PackageSummary[];nextCursor:Cursor|null}>;
 const validReadId=(v:unknown):v is string=>typeof v==='string'&&/^[A-Za-z0-9_-]{1,128}$/.test(v);
-const readError=(status:'invalid'|'not_found'|'integrity_error'|'unavailable')=>({status,cannotDispatch:true as const});
+const readError=(status:'invalid'|'not_found'|'integrity_error'|'too_large'|'unavailable')=>({status,cannotDispatch:true as const});
 function freezeView<T>(v:T):ReadonlyDeep<T>{if(v&&typeof v==='object'){for(const child of Object.values(v))freezeView(child);Object.freeze(v);}return v as ReadonlyDeep<T>;}
 function readRecord(v:unknown,required:readonly string[],optional:readonly string[]=[]):Record<string,unknown>|null{
  if(!v||typeof v!=='object'||Array.isArray(v))return null;
@@ -46,12 +46,16 @@ function ownedRow(v:unknown,keys:readonly string[],owner:string):Record<string,u
  const row=readRecord(v,keys);if(!row)throw Error('INVALID_READ_ROW');return row;
 }
 function storedTimeInput(v:any){return {localDateTime:v?.localDateTime,timezone:v?.timezone,utcOffset:v?.utcOffset,confirmed:true};}
+class PackageReadBudgetError extends Error {}
 function decodeReadRows(headerRows:unknown[],childRows:unknown[],owner:string):{draft:PackageDraft;createdAt:number}[]{
  if(headerRows.length>21||childRows.length>21000)throw Error('READ_BOUND');
  const headers=headerRows.map(v=>ownedRow(v,headerReadKeys,owner));
+ let serializedUnits=0;
+ for(const h of headers){for(const key of ['payload_json','draft_identity'])if(typeof h[key]==='string'){const length=(h[key] as string).length;if(length>1024*1024)throw new PackageReadBudgetError();serializedUnits+=length;}}
  const byId=new Map<string,Record<string,unknown>[]>();
  for(const h of headers){if(!validReadId(h.id)||!validReadId(h.project_id)||byId.has(h.id))throw Error('HEADER_ID');byId.set(h.id,[]);}
- for(const value of childRows){const row=ownedRow(value,childReadKeys,owner);const items=typeof row.package_id==='string'?byId.get(row.package_id):undefined;if(!items||!Number.isInteger(row.position)||Number(row.position)<0||Number(row.position)>999)throw Error('ORPHAN_READ_ITEM');items.push(row);}
+ for(const value of childRows){const row=ownedRow(value,childReadKeys,owner);const items=typeof row.package_id==='string'?byId.get(row.package_id):undefined;if(!items||!Number.isInteger(row.position)||Number(row.position)<0||Number(row.position)>999)throw Error('ORPHAN_READ_ITEM');if(typeof row.draft_json==='string'){if(row.draft_json.length>1024*1024)throw new PackageReadBudgetError();serializedUnits+=row.draft_json.length;}items.push(row);}
+ if(serializedUnits>2*1024*1024)throw new PackageReadBudgetError();
  return headers.map(h=>{
   if(typeof h.payload_json!=='string'||typeof h.draft_identity!=='string'||typeof h.request_key!=='string'||!/^[A-Za-z0-9_-]{16,128}$/.test(h.request_key)||
      h.receipt_complete!==1||h.receipt_key!==h.request_key||!validInstant(h.created_at_ms)||!Number.isInteger(h.item_count)||Number(h.item_count)<1||Number(h.item_count)>1000)throw Error('INVALID_HEADER');
@@ -91,7 +95,7 @@ export async function readOwnedPackageDraft(db:PackageDatabase,owner:string,pack
   const summary=summaryView(draft,createdAt);
   const data=freezeView({...summary,items:draft.items.map(item=>({...summary.items.find(v=>v.id===item.schedule.id)!,caption:item.schedule.snapshot.caption,media:{id:item.schedule.snapshot.mediaId,role:item.schedule.snapshot.mediaRole,mimeType:item.schedule.snapshot.mimeType}}))});
   return {status:'ok',data,cannotDispatch:true};
- }catch{return readError('integrity_error');}
+ }catch(error){return readError(error instanceof PackageReadBudgetError?'too_large':'integrity_error');}
 }
 /** Bounded keyset list, newest creation first. Not yet a calendar-month API. */
 export async function listOwnedPackageDrafts(db:PackageDatabase,owner:string,query:unknown):Promise<PackageReadResult<PackageList>>{
@@ -117,5 +121,5 @@ export async function listOwnedPackageDrafts(db:PackageDatabase,owner:string,que
   const packages=decoded.slice(0,limit).map(v=>summaryView(v.draft,v.createdAt)),last=packages.at(-1);
   const nextCursor=decoded.length>limit&&last?{createdAt:last.createdAt,id:last.id}:null;
   return {status:'ok',data:freezeView({packages,nextCursor}),cannotDispatch:true};
- }catch{return readError('integrity_error');}
+ }catch(error){return readError(error instanceof PackageReadBudgetError?'too_large':'integrity_error');}
 }

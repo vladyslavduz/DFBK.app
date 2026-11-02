@@ -24,3 +24,7 @@ CREATE TABLE publication_package_draft_receipts (
  FOREIGN KEY(package_id,user_id,project_id) REFERENCES publication_package_drafts(id,user_id,project_id) ON DELETE CASCADE,
  UNIQUE(user_id,request_key)
 );
+
+-- Bounded newest-first owner/project pagination. Local draft only.
+CREATE INDEX idx_package_drafts_owner_created ON publication_package_drafts(user_id,created_at_ms DESC,id DESC);
+CREATE INDEX idx_package_drafts_owner_project_created ON publication_package_drafts(user_id,project_id,created_at_ms DESC,id DESC);
