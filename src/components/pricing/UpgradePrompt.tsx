@@ -1,3 +1,4 @@
+import PaymentInfoButton from '../PaymentInfoButton';
 import AppLink from '../AppLink';
 
 type Props = {
@@ -19,7 +20,7 @@ export default function UpgradePrompt({ imageUrl, onLater }: Props) {
           <li>✓ Weitere Business-Funktionen, sobald sie verfügbar sind</li>
         </ul>
         <div className="upgrade-prompt-actions">
-          <AppLink className="button" to="/pricing">Business ansehen</AppLink>
+          <PaymentInfoButton />
           {onLater ? <button className="button button-secondary" type="button" onClick={onLater}>Später entscheiden</button> : <AppLink className="button button-secondary" to="/app">Später entscheiden</AppLink>}
         </div>
       </div>
