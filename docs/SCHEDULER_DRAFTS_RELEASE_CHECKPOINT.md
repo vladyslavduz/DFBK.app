@@ -6,8 +6,8 @@
 
 | Stage | Deliverable / exit condition | Status |
 | --- | --- | --- |
-| 1. Assemble | One draft release PR into main containing #57–65; frozen source/head manifest and this checkpoint. No merge or production action. | DONE when this release PR is created |
-| 2. Validate | Validate the combined candidate, review SQL and flags, record final tree/check results and remaining blockers. Existing green local results remain evidence, not CI claims. | NEXT |
+| 1. Assemble | One draft release PR into main containing #57–65; frozen source/head manifest and this checkpoint. No merge or production action. | DONE — PR #66 |
+| 2. Validate | Validate the combined candidate, review SQL and flags, record final tree/check results and remaining blockers. Existing green local results remain evidence, not CI claims. | DONE for code-only/OFF release; see SCHEDULER_DRAFTS_RELEASE_VALIDATION.md |
 | 3. Release code OFF | After concrete release approval: one squash commit into main, observe Cloudflare build/deploy and verify active version; scheduler/Social stay OFF. Main's existing auto-deploy means merge is a production-affecting action. | NOT STARTED |
 | 4. Activate drafts | Agree actual parsing/admission/quota limits; resolve account-selection blocker below; review live D1/schema, backup/rollback and separately approved SQL/settings actions; enable only reviewed draft functionality. | BLOCKED on prerequisites; not activated |
 | 5. Verify real flow | With an authorized test session: own project -> draft save -> calendar -> exact retry, foreign-access denial and no provider publication. Record actual outcomes, then decide the next increment. | NOT STARTED |
@@ -50,4 +50,4 @@ SQL task reviewed for inventory only: database/tasks/2026-11-02-publication-pack
 ## Exact stop
 
 Stage 1 assembles a reviewable single-commit candidate and records blockers. No main refs, original PR states, production deployment, D1/R2, Worker configuration, OAuth/secrets/billing or Social activation changed.
-Next action: stage 2, combined-candidate validation and resolution plan for draft-only account selection, before any main merge.
+Stage 2 is now complete: see SCHEDULER_DRAFTS_RELEASE_VALIDATION.md. Combined code tests/types/build/dry-run/runtime/browser checks passed. Draft activation remains blocked. Next numbered action is stage 3 (code-only/OFF release) after its concrete release decision. The review branch now includes an additional documentation checkpoint commit; main must still receive one final squash commit.
