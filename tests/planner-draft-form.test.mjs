@@ -43,3 +43,13 @@ test('cross-origin configuration and oversize request reject before fetch',()=>w
  config.apiBaseUrl='https://other.invalid/api';await assert.rejects(()=>saveProjectDraft(selection,'fixture_request_01'),e=>e.code==='UNSAFE_API_ORIGIN'&&!e.uncertain);
  config.apiBaseUrl='/api';await assert.rejects(()=>saveProjectDraft({...selection,targets:[{...selection.targets[0],caption:'😀'.repeat(7000)}]},'fixture_request_01'),e=>e.code==='REQUEST_TOO_LARGE'&&!e.uncertain);
 }));
+
+test('draft destination service requires its own draft-only response, not the Social API',()=>withFetch(async(url,options)=>{
+ assert.equal(String(url),'https://fixture.invalid/api/scheduler/destinations');assert.equal(options.credentials,'same-origin');assert.equal(options.redirect,'error');
+ return response(200,{ok:true,scope:'draft_only',cannotDispatch:true,destinations:[{channel:'instagram',connectionId:'ig',label:'Fixture'}]});
+},async()=>{assert.deepEqual(await load('src/services/planner-draft.ts').projectDraftDestinations(),[{channel:'instagram',connectionId:'ig',label:'Fixture'}]);}));
+test('draft destination service rejects wrong scope, duplicate channels and arbitrary IDs',async()=>{
+ for(const b of [{ok:true,connections:[]},{ok:true,scope:'draft_only',cannotDispatch:true,destinations:[{channel:'instagram',connectionId:'https://example.invalid',label:'Fixture'}]},{ok:true,scope:'draft_only',cannotDispatch:true,destinations:[{channel:'instagram',connectionId:'ig',label:'Fixture'},{channel:'instagram',connectionId:'other',label:'Other'}]}]){
+  await withFetch(async()=>response(200,b),async()=>assert.rejects(()=>load('src/services/planner-draft.ts').projectDraftDestinations(),e=>e instanceof DraftSaveError));
+ }
+});

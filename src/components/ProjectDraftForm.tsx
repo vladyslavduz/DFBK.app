@@ -1,8 +1,8 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import AppLink from './AppLink';
 import { publishingChannels, type PublishingChannel } from '../config/publishing';
-import { socialService, type SocialConnection } from '../services/social';
-import { saveProjectDraft, draftSaveMessage, DraftSaveError } from '../services/planner-draft';
+
+import { projectDraftDestinations, type DraftDestination, saveProjectDraft, draftSaveMessage, DraftSaveError } from '../services/planner-draft';
 import { confirmedDraftTime, draftTimeChoices } from '../lib/planner-draft-time';
 import type { ProjectDraftSelection } from '../../worker/lib/scheduler-project-draft';
 import '../styles/planner-draft.css';
@@ -26,7 +26,7 @@ function TimeInput({label,local,offset,disabled,onChange}:{label:string;local:st
 }
 export default function ProjectDraftForm({ownerId,projectId,mediaId,imageUrl,texts}:Props){
  const [open,setOpen]=useState(false),[revision,setRevision]=useState(0);
- const [connections,setConnections]=useState<SocialConnection[]|null>(null),[connectionError,setConnectionError]=useState('');
+ const [connections,setConnections]=useState<DraftDestination[]|null>(null),[connectionError,setConnectionError]=useState('');
  const [local,setLocal]=useState(''),[offset,setOffset]=useState(''),[inputError,setInputError]=useState('');
  const [targets,setTargets]=useState<Record<Channel,Target>>(()=>({
   instagram:{selected:false,caption:texts.instagram,override:false,local:'',offset:''},
@@ -36,10 +36,10 @@ export default function ProjectDraftForm({ownerId,projectId,mediaId,imageUrl,tex
  useEffect(()=>{alive.current=true;return()=>{alive.current=false;};},[]);
  useEffect(()=>{
   if(!open)return;let active=true;setConnections(null);setConnectionError('');
-  void socialService.getConnections().then(data=>{if(active)setConnections(data);}).catch(()=>{if(active)setConnectionError('Verbindungen konnten nicht geladen werden. Bitte prüfe deine Integrationen und versuche es erneut.');});
+  void projectDraftDestinations().then(data=>{if(active)setConnections(data);}).catch(error=>{if(active)setConnectionError(error instanceof DraftSaveError&&error.code==='SCHEDULER_DISABLED'?'Der Planer ist noch nicht freigeschaltet.':'Verbindungen konnten nicht geladen werden. Bitte prüfe deine Integrationen und versuche es erneut.');});
   return()=>{active=false;};
  },[open,revision,ownerId]);
- function connection(channel:Channel){return connections?.find(c=>c.provider===channel&&c.availability==='available'&&c.connected&&c.status==='connected'&&c.connectionId&&/^[A-Za-z0-9_-]{1,128}$/.test(c.connectionId))||null;}
+ function connection(channel:Channel){return connections?.find(c=>c.channel===channel&&c.connectionId&&/^[A-Za-z0-9_-]{1,128}$/.test(c.connectionId))||null;}
  function update(channel:Channel,patch:Partial<Target>){setTargets(previous=>({...previous,[channel]:{...previous[channel],...patch}}));setInputError('');}
  const locked=attempt!==null;
  const plannerUrl='/app/planner?projectId='+encodeURIComponent(projectId);
@@ -88,7 +88,7 @@ export default function ProjectDraftForm({ownerId,projectId,mediaId,imageUrl,tex
       const supported=item.id==='instagram'||item.id==='facebook',account=supported?connection(item.id as Channel):null;
       return <label className="project-draft__channel" key={item.id}>
        <input type="checkbox" aria-label={item.label+' für Entwurf auswählen'} disabled={!supported||!account} checked={supported?targets[item.id as Channel].selected:false} onChange={e=>{if(supported)update(item.id as Channel,{selected:e.target.checked});}} />
-       <img src={'/visual/integrations/icons/'+item.icon} alt="" /><span><strong>{item.label}</strong><small>{account?account.accountName||'Verbundenes Konto':supported?'Verbundenes Konto erforderlich':'Planer-Anbindung noch nicht verfügbar'}</small></span>
+       <img src={'/visual/integrations/icons/'+item.icon} alt="" /><span><strong>{item.label}</strong><small>{account?account.label||'Verbundenes Konto':supported?'Verbundenes Konto erforderlich':'Planer-Anbindung noch nicht verfügbar'}</small></span>
       </label>;
      })}</div>
      <div className="publishing-actions"><button type="button" onClick={()=>setRevision(v=>v+1)}>Verbindungen erneut laden</button><AppLink to="/app/integrations">Konten verwalten</AppLink></div>

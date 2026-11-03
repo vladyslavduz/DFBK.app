@@ -35,7 +35,23 @@ export function draftSaveMessage(error:DraftSaveError):string{
   case 'PLAN_ACCESS_REQUIRED':return 'Dein aktiver Zugang konnte nicht bestätigt werden. Prüfe deinen Tarif.';
   case 'DRAFT_CONNECTION_UNAVAILABLE':return 'Ein gewähltes Konto ist nicht mehr verbunden. Lade die Verbindungen erneut.';
   case 'DRAFT_MEDIA_UNAVAILABLE':case 'DRAFT_MATERIAL_NOT_FOUND':case 'DRAFT_PROJECT_NOT_READY':return 'Projekt oder Bild ist nicht mehr verfügbar oder noch nicht bereit. Prüfe die Projektdetails.';
+  case 'SCHEDULER_DRAFT_RATE_LIMITED':return 'Dein Limit für neue Entwürfe innerhalb von 24 Stunden ist erreicht. Bereits gespeicherte Entwürfe bleiben erhalten.';
   case 'REQUEST_TOO_LARGE':return 'Die Texte sind zusammen zu lang. Bitte kürze sie.';
   default:return 'Der Entwurf wurde nicht bestätigt. Prüfe die Auswahl und die Zeiten.';
  }
+}
+
+export type DraftDestination={channel:'instagram'|'facebook';connectionId:string;label:string};
+/** This endpoint observes existing owned metadata, not provider readiness or publishing permission. */
+export async function projectDraftDestinations():Promise<DraftDestination[]>{
+ const url=new URL(appConfig.apiBaseUrl+'/scheduler/destinations',window.location.origin);
+ if(url.origin!==window.location.origin)throw new DraftSaveError('UNSAFE_API_ORIGIN',false);
+ const r=await fetch(url,{credentials:'same-origin',cache:'no-store',redirect:'error'});
+ const text=await r.text();if(new TextEncoder().encode(text).length>16*1024)throw new DraftSaveError('INVALID_RESPONSE',false);
+ let b:any;try{b=JSON.parse(text);}catch{throw new DraftSaveError('INVALID_RESPONSE',false);}
+ if(!r.ok)throw new DraftSaveError(typeof b?.error?.code==='string'?b.error.code:'API_ERROR',false);
+ if(b?.ok!==true||b.scope!=='draft_only'||b.cannotDispatch!==true||!Array.isArray(b.destinations)||b.destinations.length>2||
+  b.destinations.some((d:any)=>!['instagram','facebook'].includes(d?.channel)||typeof d.connectionId!=='string'||!/^[A-Za-z0-9_-]{1,128}$/.test(d.connectionId)||typeof d.label!=='string'||!d.label.trim()||d.label.length>200)||
+  new Set(b.destinations.map((d:any)=>d.channel)).size!==b.destinations.length)throw new DraftSaveError('INVALID_RESPONSE',false);
+ return b.destinations;
 }

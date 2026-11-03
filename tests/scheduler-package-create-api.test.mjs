@@ -21,7 +21,7 @@ function fixture(schema=true){
   db.prepare('INSERT INTO sessions VALUES(?,?,?,?,NULL)').run(id,id,createHash('sha256').update('fixture_'+id).digest('hex'),'2099-01-01T00:00:00Z');
  }
  db.exec("INSERT INTO projects VALUES('project','owner','ready'),('foreign','other','ready')");
- for(const p of ['database/migrations/2026-09-22-project-media-v1.sql','database/tasks/2026-10-07-social-publishing-v1.sql',...(schema?['database/tasks/2026-11-02-publication-package-drafts.sql']:[])])db.exec(fs.readFileSync(new URL('../'+p,import.meta.url),'utf8'));
+ for(const p of ['database/migrations/2026-09-22-project-media-v1.sql','database/tasks/2026-10-07-social-publishing-v1.sql',...(schema?['database/tasks/2026-11-02-publication-package-drafts.sql','database/tasks/2026-11-03-publication-draft-admissions.sql']:[])])db.exec(fs.readFileSync(new URL('../'+p,import.meta.url),'utf8'));
  db.prepare("INSERT INTO project_media(id,project_id,storage_key,role,mime_type,size_bytes) VALUES('media','project','private/fixture.webp','optimized','image/webp',?)").run(bytes.length);
  db.prepare("INSERT INTO project_media(id,project_id,storage_key,role,mime_type,size_bytes) VALUES('foreign_media','foreign','private/other.webp','optimized','image/webp',?)").run(bytes.length);
  db.exec("INSERT INTO social_connections(id,user_id,provider,external_account_id,external_account_name,status) VALUES('ig','owner','instagram','111','Fixture','connected'),('fb','owner','facebook','222','Fixture','connected'),('other_ig','other','instagram','333','Fixture','connected')");
@@ -36,7 +36,7 @@ function fixture(schema=true){
    if(write&&h.lostAck){h.lostAck=false;throw Error('Lost acknowledgement');}return out;
   }catch(e){if(!committed)db.exec('ROLLBACK');throw e;}
  }};
- h.env={DB:port,MEDIA:{async get(key){h.reads++;assert.equal(key,'private/fixture.webp');return h.mediaMissing?null:{size:bytes.length,body:new ReadableStream({start(c){c.enqueue(bytes);c.close();}})};}},SCHEDULER_READ_ENABLED:'true',SCHEDULER_DRAFT_WRITE_ENABLED:'true',SCHEDULER_DRAFT_MAX_TARGETS:'4',SCHEDULER_DRAFT_HORIZON_MS:String(4*86400000),SCHEDULER_DRAFT_MAX_MEDIA_BYTES:'1024'};
+ h.env={DB:port,MEDIA:{async get(key){h.reads++;assert.equal(key,'private/fixture.webp');return h.mediaMissing?null:{size:bytes.length,body:new ReadableStream({start(c){c.enqueue(bytes);c.close();}})};}},SCHEDULER_READ_ENABLED:'true',SCHEDULER_DRAFT_WRITE_ENABLED:'true',SCHEDULER_DRAFT_MAX_TARGETS:'4',SCHEDULER_DRAFT_HORIZON_MS:String(4*86400000),SCHEDULER_DRAFT_MAX_MEDIA_BYTES:'1024',SCHEDULER_DRAFT_MAX_CREATES_PER_DAY:'100'};
  h.call=async(body=request(),options={})=>{
   const headers={Origin:'https://dfbk.fixture','Content-Type':'application/json','Idempotency-Key':'fictional_request_01',...(options.actor===null?{}:{Cookie:'dfbk_session=fixture_'+(options.actor??'owner')}),...options.headers};
   const r=new Request((options.origin??'https://dfbk.fixture')+(options.path??'/api/scheduler/packages'),{method:options.method??'POST',headers,...((options.method??'POST')==='POST'?{body:typeof body==='string'?body:JSON.stringify(body)}:{})});
@@ -122,4 +122,31 @@ test('missing draft schema and failed atomic save return fixed errors and no fal
 test('POST only at root; unsupported methods/preflight keep no CORS and do not mutate',()=>using(async h=>{
  for(const method of ['OPTIONS','PUT','DELETE','HEAD']){const r=await h.call(null,{method});assert.equal(r.status,405);assert.equal(r.headers.get('Access-Control-Allow-Origin'),null);}
  assert.equal((await h.call(request(),{path:'/api/scheduler/packages/some-id'})).status,405);assert.equal(h.writes,0);
+}));
+
+test('draft destinations remain readable with Social frozen and expose only owned metadata',()=>using(async h=>{
+ h.env.SOCIAL_ENABLED='false';h.logs=[];
+ const r=await h.call(null,{method:'GET',path:'/api/scheduler/destinations'});assert.equal(r.status,200);const b=await r.json();
+ assert.equal(b.scope,'draft_only');assert.equal(b.cannotDispatch,true);assert.deepEqual(b.destinations.map(d=>d.connectionId).sort(),['fb','ig']);
+ for(const d of b.destinations)assert.deepEqual(Object.keys(d).sort(),['channel','connectionId','label']);
+ const sql=h.logs.find(s=>s.includes('FROM social_connections'));assert.ok(sql.includes('user_id=?1'));assert.ok(!sql.includes('SELECT *')&&!sql.includes('access_token_encrypted')&&!sql.includes('external_account_id'));
+ assert.equal(h.writes,0);assert.equal(h.reads,0);assert.equal(r.headers.get('Access-Control-Allow-Origin'),null);
+ assert.equal((await h.call(null,{method:'GET',path:'/api/social/instagram/connect'})).status,503);
+}));
+test('destinations deny guest/foreign, expire malformed dates, reject mutations and missing schema safely',()=>using(async h=>{
+ assert.equal((await h.call(null,{method:'GET',path:'/api/scheduler/destinations',actor:null})).status,401);
+ const other=await (await h.call(null,{method:'GET',path:'/api/scheduler/destinations',actor:'other'})).json();assert.deepEqual(other.destinations.map(d=>d.connectionId),['other_ig']);
+ h.db.exec("UPDATE social_connections SET token_expires_at='2027-01-13 00:00:00' WHERE id='ig';UPDATE social_connections SET token_expires_at='2027-02-30T12:00:00Z' WHERE id='fb'");
+ assert.deepEqual((await (await h.call(null,{method:'GET',path:'/api/scheduler/destinations'})).json()).destinations,[]);
+ for(const method of ['POST','OPTIONS','DELETE'])assert.equal((await h.call({}, {method,path:'/api/scheduler/destinations'})).status,405);
+ assert.equal((await h.call(null,{method:'GET',path:'/api/scheduler/destinations?user_id=other'})).status,400);
+ h.env.SCHEDULER_READ_ENABLED='false';h.logs=[];assert.equal((await h.call(null,{method:'GET',path:'/api/scheduler/destinations'})).status,503);assert.ok(!h.logs.some(s=>s.includes('social_connections')));
+ h.env.SCHEDULER_READ_ENABLED='true';h.db.exec('DROP TABLE social_connections');assert.equal(await code(await h.call(null,{method:'GET',path:'/api/scheduler/destinations'})),'SCHEDULER_UNAVAILABLE');assert.equal(h.writes,0);
+}));
+test('daily creation cap is required, counts only new drafts, and exact replay stays free',()=>using(async h=>{
+ h.env.SCHEDULER_DRAFT_MAX_CREATES_PER_DAY=undefined;assert.equal(await code(await h.call()),'SCHEDULER_POLICY_REQUIRED');
+ h.env.SCHEDULER_DRAFT_MAX_CREATES_PER_DAY='1';assert.equal((await h.call()).status,201);const reads=h.reads;
+ assert.equal((await h.call()).status,200);assert.equal(h.reads,reads);
+ const limited=await h.call(request(),{headers:{'Idempotency-Key':'fictional_request_02'}});assert.equal(limited.status,429);assert.equal(await code(limited),'SCHEDULER_DRAFT_RATE_LIMITED');assert.equal(h.reads,reads);assert.equal(h.count(),1);
+ clock+=86400000;assert.equal((await h.call(request(),{headers:{'Idempotency-Key':'fictional_request_02'}})).status,201);
 }));

@@ -1,3 +1,4 @@
+import { handleSchedulerDestinations } from './routes/scheduler-destinations';
 import { handleSchedulerPackages } from './routes/scheduler-packages';
 import type { Env } from './lib/env';
 import { json } from './lib/response';
@@ -37,6 +38,8 @@ export default {
       });
     }
 
+    const destinationResponse = await handleSchedulerDestinations(request, env, url.pathname);
+    if (destinationResponse) return destinationResponse;
     const schedulerResponse = await handleSchedulerPackages(request, env, url.pathname);
     if (schedulerResponse) return schedulerResponse;
 

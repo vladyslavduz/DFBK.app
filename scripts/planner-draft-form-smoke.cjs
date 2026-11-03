@@ -17,7 +17,8 @@ const origin=process.env.PROMO_ORIGIN||'http://127.0.0.1:4185',image=fs.readFile
   if(req.method()!=='GET')posts.push({path:p,key:req.headers()['idempotency-key'],body:req.postDataJSON()});
   if(p==='/api/auth/me'){status=guest?401:200;data=guest?{ok:false,error:'NOT_AUTHENTICATED'}:{ok:true,user:{id:'fixture-owner',email:'fixture@example.invalid',emailVerified:true,plan:'business'}};}
   else if(p.endsWith('/entitlements'))data={ok:true,plan:'business',displayName:'Business',status:'active',voice:{enabled:true,maxWords:null},features:{contentGeneration:true,share:true,businessIntegrations:true},usage:{projectsUsed:2,projectsLimit:null},expiresAt:null};
-  else if(p==='/api/social/connections')data={ok:true,connections:['instagram','facebook','linkedin','x'].map(connection)};
+  else if(p==='/api/social/connections')data={ok:true,connections:['instagram','facebook','linkedin','x'].map(provider=>({...connection(provider),connected:false,connectionId:null,availability:'not_configured'}))};
+  else if(p==='/api/scheduler/destinations')data={ok:true,scope:'draft_only',cannotDispatch:true,destinations:connected?['instagram','facebook'].map(channel=>({channel,connectionId:channel+'-fixture',label:'Fixture '+channel})):[]};
   else if(p==='/api/projects')data={ok:true,projects:[project('selected'),project('second')]};
   else if(p==='/api/scheduler/packages'&&req.method()==='POST'){
    if(mode==='network'){await route.abort('failed');return;}
