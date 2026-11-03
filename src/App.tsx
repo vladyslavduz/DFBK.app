@@ -1,3 +1,4 @@
+import PlannerPage from './pages/PlannerPage';
 import { useEffect } from 'react';
 import ProjectPublishPage from './pages/ProjectPublishPage';
 import './styles/publishing.css';
@@ -44,6 +45,7 @@ export default function App() {
   if (pathname === '/forgot-password') return <ForgotPasswordPage />;
   if (pathname === '/verify-email') return <EmailVerificationPage />;
   if (pathname === '/app') return <AppAccessGate><DashboardPage /></AppAccessGate>;
+  if (pathname === '/app/planner') return <AppAccessGate><PlannerPage /></AppAccessGate>;
   if (pathname === '/app/new') return <AppAccessGate><CreateProjectPage /></AppAccessGate>;
   if (pathname === '/app/projects') return <AppAccessGate><ProjectsPage /></AppAccessGate>;
   if (/^\/app\/projects\/[^/]+\/publish$/.test(pathname)) return <AppAccessGate><ProjectPublishPage id={pathname.split('/')[3]} /></AppAccessGate>;
