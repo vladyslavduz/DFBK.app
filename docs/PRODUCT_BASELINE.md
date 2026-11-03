@@ -36,6 +36,13 @@ Trial и Business имеют одинаковый основной сценар�
 
 ## Что реально реализовано на 03.11.2026
 
+Функциональную разработку продолжаем. Live checkout и реальные списания закрыты до
+отдельного согласования оформления деятельности и live billing; test billing можно
+подготовить отдельной задачей. Purchase CTA должен показывать честное окно:
+«DFBK.app befindet sich in Entwicklung. Zahlungen sind derzeit nicht möglich.»
+с существующей контактной ссылкой владельца, если она есть. Это утверждённое UX-notice,
+не уже реализованный UI, не юридическое освобождение и не установленная compliance.
+
 - Календарь доступен для чтения, project preview released (PR68); PR69 закрепил
   `SCHEDULER_READ_ENABLED="true"` в source config. `SOCIAL_ENABLED="false"`, Social FROZEN.
 - По подтверждённому production checkpoint центра созданы/проверены четыре D1 draft
