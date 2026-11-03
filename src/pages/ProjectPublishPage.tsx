@@ -3,6 +3,7 @@ import { useUserArea, type AppProject, type ProjectContent } from '../contexts/U
 import { useSocialPublishing, connectionForProvider } from '../contexts/SocialPublishingContext';
 import { getProjectMediaUrl } from '../services/projects';
 import PublishingPanel from '../components/PublishingPanel';
+import ProjectDraftForm from '../components/ProjectDraftForm';
 import { publishingChannels, type PublishingChannel } from '../config/publishing';
 import { navigate } from '../lib/router';
 import '../styles/integrations-share.css';
@@ -121,6 +122,7 @@ export default function ProjectPublishPage({ id }: { id: string }) {
     {canPrepare && !optimized && <p className="inline-notice" role="status">Du verwendest ausdrücklich dein Originalfoto. Es wurde kein optimiertes Foto ausgewählt.</p>}
     {attempt?.projectId === id && <section className="inline-notice"><p>Gespeicherter Veröffentlichungsversuch: erst klären, dann einen neuen Beitrag vorbereiten.</p><button type="button" disabled={checking} onClick={() => void recover()}>Gespeicherten Versuch prüfen</button>{continuableRequest && continuableRequest === attempt.requestId && <button type="button" disabled={checking} onClick={() => void recover(true)}>Denselben ausstehenden Versuch fortsetzen</button>}{terminalRequest === attempt.requestId && terminalRequest && <button type="button" disabled={checking} onClick={() => { if (window.confirm('Dieser Versuch ist abgeschlossen. Einen weiteren Beitrag vorbereiten?')) { saveAttempt(null); setTerminalRequest(null); setResult(''); } }}>Weiteren Beitrag vorbereiten</button>}<p role="status">{result}</p></section>}
     {attempt && attempt.projectId !== id && <p role="alert">Ein ungeklärter Veröffentlichungsversuch eines anderen Projekts ist gespeichert. Öffne zuerst dieses Projekt und prüfe seinen Status.</p>}
+    {canPrepare && texts && user && project.status === 'ready' && <ProjectDraftForm key={user.id + ':' + id + ':' + mediaId} ownerId={user.id} projectId={id} mediaId={mediaId} imageUrl={getProjectMediaUrl(id, mediaId)} texts={texts} />}
     {canPrepare && texts && <PublishingPanel key={id + ':' + mediaId + ':' + (initialChannel || '')} initialChannel={initialChannel} title={project.title} imageUrl={getProjectMediaUrl(id, mediaId)} texts={texts} onDirectPublish={send} />}
     <p className="project-result__help">Die Texte stammen aus deinen vorhandenen KI-Ergebnissen und lassen sich pro Kanal bearbeiten. Download, Kopieren oder Teilen bestätigt noch keine Veröffentlichung.</p>
     <button className="button button-secondary" type="button" onClick={() => navigate('/app/integrations')}>Verbundene Konten verwalten</button>
