@@ -1,5 +1,6 @@
 import type { Env } from '../lib/env';
 import { requireUser } from '../lib/user';
+import { handleSchedulerPackageCreate } from './scheduler-package-create';
 import { readOwnedPackageDraft, listOwnedPackageDrafts, type PackageReadResult } from '../lib/scheduler-package-read';
 const API_ROOT='/api/scheduler/packages';
 const RESPONSE_BYTES=256*1024;
@@ -18,7 +19,7 @@ function schedulerReadFailure(result:Exclude<PackageReadResult<unknown>,{status:
   default:return schedulerFailure('SCHEDULER_UNAVAILABLE',503);
  }
 }
-/** Read-only endpoints; feature defaults OFF and never enables sending. */
+/** Read endpoints plus separately gated draft creation. Neither enables sending. */
 export async function handleSchedulerPackages(request:Request,env:Env,pathname:string):Promise<Response|null>{
  if(pathname!==API_ROOT&&!pathname.startsWith(API_ROOT+'/'))return null;
  if(request.url.length>4096)return schedulerFailure('SCHEDULER_URL_TOO_LONG',414);
@@ -26,7 +27,8 @@ export async function handleSchedulerPackages(request:Request,env:Env,pathname:s
  if(url.pathname!==pathname)return schedulerFailure('INVALID_SCHEDULER_QUERY',400);
  const detail=pathname===API_ROOT?null:pathname.slice(API_ROOT.length+1);
  if(detail!==null&&(!detail||detail.includes('/')))return schedulerFailure('SCHEDULER_PACKAGE_NOT_FOUND',404);
- if(request.method!=='GET')return schedulerFailure('METHOD_NOT_ALLOWED',405,{Allow:'GET'});
+ if(request.method==='POST'&&detail===null&&env.SCHEDULER_DRAFT_WRITE_ENABLED==='true')return handleSchedulerPackageCreate(request,env);
+ if(request.method!=='GET')return schedulerFailure('METHOD_NOT_ALLOWED',405,{Allow:detail===null&&env.SCHEDULER_DRAFT_WRITE_ENABLED==='true'?'GET, POST':'GET'});
  try{
   const actor=await requireUser(request,env);
   if(actor instanceof Response)return schedulerFailure('NOT_AUTHENTICATED',401);

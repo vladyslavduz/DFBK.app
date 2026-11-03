@@ -125,3 +125,23 @@ export async function listOwnedPackageDrafts(db:PackageDatabase,owner:string,que
   return {status:'ok',data:freezeView({packages,nextCursor}),cannotDispatch:true};
  }catch(error){return readError(error instanceof PackageReadBudgetError?'too_large':'integrity_error');}
 }
+
+/** SERVER INTERNAL: includes private snapshot metadata, never an HTTP response DTO.
+ * Reads receipt/header/all children atomically under current project ownership.
+ */
+export async function readOwnedDraftReceipt(db:PackageDatabase,owner:string,requestKey:string):Promise<PackageReadResult<{draft:PackageDraft;createdAt:number}>>{
+ if(!validReadId(owner)||!/^[A-Za-z0-9_-]{16,128}$/.test(requestKey))return readError('invalid');
+ let batch:unknown;
+ try{const session=db.withSession('first-primary');batch=await session.batch([
+  session.prepare(headerReadSelect+' WHERE '+readOwnerScope+' AND p.request_key=?2').bind(owner,requestKey),
+  session.prepare(childReadSelect+' WHERE '+readOwnerScope+' AND p.request_key=?2 ORDER BY i.position').bind(owner,requestKey)
+ ]);}catch{return readError('unavailable');}
+ try{
+  const headers=readRows(batch,0),children=readRows(batch,1);
+  if(!headers.length&&!children.length)return readError('not_found');
+  if(headers.length!==1)throw Error('RECEIPT_COUNT');
+  const [record]=decodeReadRows(headers,children,owner);
+  if((headers[0] as Record<string,unknown>).request_key!==requestKey)throw Error('RECEIPT_KEY');
+  return {status:'ok',data:freezeView(record),cannotDispatch:true};
+ }catch(error){return readError(error instanceof PackageReadBudgetError?'too_large':'integrity_error');}
+}
