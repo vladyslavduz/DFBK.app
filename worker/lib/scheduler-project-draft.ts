@@ -1,4 +1,4 @@
-/** Trusted-service preparation only. No HTTP route, writes, approval or dispatch. */
+/** Internal draft preparation for trusted callers. No writes, approval or dispatch. */
 import { accept, reject, validInstant, validateScheduleTime, type Result } from './scheduler-contract';
 import { createPublicationPackage, type PackageDraft } from './scheduler-package';
 import type { PackageDatabase } from './scheduler-package-store';
@@ -14,22 +14,19 @@ const ownedMedia='SELECT p.id AS project_id,p.status,m.id AS media_id,m.storage_
 const ownedConnection='SELECT id,provider,external_account_id FROM social_connections WHERE id=?1 AND user_id=?2 AND provider=?3 AND status=\'connected\' LIMIT 1';
 async function hash(value:BufferSource):Promise<string>{return [...new Uint8Array(await crypto.subtle.digest('SHA-256',value))].map(n=>n.toString(16).padStart(2,'0')).join('');}
 async function identity(parts:string[]):Promise<string>{return hash(new TextEncoder().encode(JSON.stringify(parts)));}
-/** ownerId comes from authentication, requestKey from a future bounded HTTP adapter.
- * JSON allows only project/media selectors, captions, connections and confirmed times.
- * Policy must be explicitly supplied by the trusted caller; there are no product defaults.
- * Returned draft contains PRIVATE storage metadata: never serialize it into an HTTP response.
- */
-export async function prepareProjectPackageDraft(db:PackageDatabase,bucket:DraftMediaBucket,ownerId:string,requestKey:string,
- requestJson:string,now:number,policy:ProjectDraftPolicy):Promise<Result<PackageDraft>>{
+
+type DraftTime={localDateTime:string;timezone:'Europe/Berlin';utcOffset:string;confirmed:true};
+export type ProjectDraftSelection={projectId:string;mediaId:string;commonTime:DraftTime;targets:{channel:'instagram'|'facebook';connectionId:string;caption:string;timeOverride?:DraftTime}[]};
+/** Shared bounded selection parser. Calendar window admission is separate, so receipts can replay after due time. */
+export function parseProjectDraftSelection(requestJson:string,policy:ProjectDraftPolicy):Result<ProjectDraftSelection>{
  try{
-  if(!opaque(ownerId)||typeof requestKey!=='string'||!/^[A-Za-z0-9_-]{16,128}$/.test(requestKey)||!validInstant(now))return reject('INVALID_DRAFT_CONTEXT');
   if(!policy||!Number.isSafeInteger(policy.maxTargets)||policy.maxTargets<1||policy.maxTargets>1000||
    !Number.isSafeInteger(policy.horizonMs)||policy.horizonMs<1||!Number.isSafeInteger(policy.maxMediaBytes)||policy.maxMediaBytes<1||policy.maxMediaBytes>10*1024*1024)return reject('DRAFT_POLICY_REQUIRED');
   if(typeof requestJson!=='string'||requestJson.length>24*1024||new TextEncoder().encode(requestJson).length>24*1024)return reject('INVALID_DRAFT_REQUEST');
-  const request:unknown=JSON.parse(requestJson);
+  let request:unknown;try{request=JSON.parse(requestJson);}catch{return reject('INVALID_DRAFT_REQUEST');}
   if(!exact(request,['projectId','mediaId','commonTime','targets'])||!opaque(request.projectId)||!opaque(request.mediaId)||
    !Array.isArray(request.targets)||!request.targets.length||request.targets.length>policy.maxTargets)return reject('INVALID_DRAFT_REQUEST');
-  const checkTime=(time:unknown)=>{if(!exact(time,timeKeys))return false;const t=validateScheduleTime(time);return t.ok&&t.value.scheduledAt>=now&&t.value.scheduledAt-now<=policy.horizonMs;};
+  const checkTime=(time:unknown)=>{if(!exact(time,timeKeys))return false;const t=validateScheduleTime(time);return t.ok;};
   if(!checkTime(request.commonTime))return reject('INVALID_DRAFT_TIME');
   const targets:Record<string,unknown>[]=[];const selected=new Set<string>();
   for(const target of request.targets){
@@ -39,6 +36,23 @@ export async function prepareProjectPackageDraft(db:PackageDatabase,bucket:Draft
    if(Object.hasOwn(target,'timeOverride')&&!checkTime(target.timeOverride))return reject('INVALID_DRAFT_TIME');
    const key=JSON.stringify([target.channel,target.connectionId]);if(selected.has(key))return reject('DUPLICATE_DRAFT_TARGET');
    selected.add(key);targets.push(target);
+  }
+  return accept(request as ProjectDraftSelection);
+ }catch{return reject('INVALID_DRAFT_REQUEST');}
+}
+/** ownerId comes from authentication, requestKey from the bounded HTTP adapter.
+ * JSON allows only project/media selectors, captions, connections and confirmed times.
+ * Policy must be explicitly supplied by the trusted caller; there are no product defaults.
+ * Returned draft contains PRIVATE storage metadata: never serialize it into an HTTP response.
+ */
+export async function prepareProjectPackageDraft(db:PackageDatabase,bucket:DraftMediaBucket,ownerId:string,requestKey:string,
+ requestJson:string,now:number,policy:ProjectDraftPolicy):Promise<Result<PackageDraft>>{
+ try{
+  if(!opaque(ownerId)||typeof requestKey!=='string'||!/^[A-Za-z0-9_-]{16,128}$/.test(requestKey)||!validInstant(now))return reject('INVALID_DRAFT_CONTEXT');
+  const parsed=parseProjectDraftSelection(requestJson,policy);if(!parsed.ok)return parsed;
+  const request=parsed.value,targets=request.targets;
+  for(const time of [request.commonTime,...targets.flatMap(t=>t.timeOverride?[t.timeOverride]:[])]){
+   const checked=validateScheduleTime(time);if(!checked.ok||checked.value.scheduledAt<now||checked.value.scheduledAt-now>policy.horizonMs)return reject('INVALID_DRAFT_TIME');
   }
   const session=db.withSession('first-primary');
   const rows=(await session.prepare(ownedMedia).bind(request.projectId,ownerId,request.mediaId).all()).results;
