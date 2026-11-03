@@ -6,6 +6,8 @@ This package expands the existing DFBK landing page without changing its establi
 
 ## Product idea
 
+The [canonical product baseline](docs/PRODUCT_BASELINE.md) records the owner's approved scenario, Trial/Business rules, implementation gaps and change-control process (03.11.2026). Use it for product decisions; the skeleton description below is historical context.
+
 A Handwerker / Selbstständiger / small business uploads photos of completed work. DFBK later uses AI to understand the work, generate marketing content, save it as a reusable project/reference and publish it to selected channels.
 
 The first commercial loop remains deliberately small:
