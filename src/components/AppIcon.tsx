@@ -1,6 +1,7 @@
-type Props = { name: 'home' | 'folder' | 'plus' | 'settings' | 'card' | 'camera' | 'upload' | 'mic' | 'spark' | 'copy' | 'download' | 'edit' | 'check' | 'arrow' | 'share' | 'user' | 'logout' | 'image' };
+type Props = { name: 'calendar' | 'home' | 'folder' | 'plus' | 'settings' | 'card' | 'camera' | 'upload' | 'mic' | 'spark' | 'copy' | 'download' | 'edit' | 'check' | 'arrow' | 'share' | 'user' | 'logout' | 'image' };
 
 const paths: Record<Props['name'], React.ReactNode> = {
+  calendar: <><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 10h18M7 14h3M14 14h3"/></>,
   home: <><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10.5V20h13v-9.5"/><path d="M9.5 20v-6h5v6"/></>,
   folder: <><path d="M3 6.5h6l2 2h10v10.5H3z"/><path d="M3 8.5h18"/></>,
   plus: <><path d="M12 5v14"/><path d="M5 12h14"/></>,

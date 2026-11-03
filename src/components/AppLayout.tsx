@@ -15,6 +15,7 @@ const secondaryItems = [
   { to: '/app/integrations', label: 'Integrationen', icon: 'share' as const },
   { to: '/app/settings', label: 'Einstellungen', icon: 'settings' as const },
   { to: '/app/billing', label: 'Tarif', icon: 'card' as const },
+  { to: '/app/planner', label: 'Planer', icon: 'calendar' as const },
 ];
 
 function NavItem({ item, pathname }: { item: (typeof primaryItems)[number] | (typeof secondaryItems)[number]; pathname: string }) {
@@ -46,6 +47,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       <div className="app-workspace">
         <header className="app-topbar">
           <AppLink className="app-mobile-brand" to="/"><img src="/brand/dfbk-logo.svg" alt="DFBK.app" /></AppLink>
+          <AppLink className="app-topbar-planner" to="/app/planner">Planer</AppLink>
           <AppLink className="app-topbar-user" to="/app/settings" aria-label="Profil und Einstellungen"><span className="app-avatar">{initials}</span><span>Mein Bereich</span></AppLink>
         </header>
         <main className="app-main">{children}</main>

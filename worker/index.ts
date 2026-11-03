@@ -1,3 +1,4 @@
+import { handleSchedulerPackages } from './routes/scheduler-packages';
 import type { Env } from './lib/env';
 import { json } from './lib/response';
 import { handleAdmin } from './routes/admin';
@@ -35,6 +36,9 @@ export default {
         timestamp: new Date().toISOString(),
       });
     }
+
+    const schedulerResponse = await handleSchedulerPackages(request, env, url.pathname);
+    if (schedulerResponse) return schedulerResponse;
 
     if (request.method === 'OPTIONS') {
       return new Response(null, {
