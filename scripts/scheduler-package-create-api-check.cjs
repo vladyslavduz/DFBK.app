@@ -2,7 +2,7 @@
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict'),crypto=require('node:crypto');
 const ts=require('typescript'),{Miniflare,convertV4MiniflareOptions}=require('miniflare');
 const root=path.resolve(__dirname,'..');
-const names=['lib/scheduler-contract','lib/scheduler-state','lib/scheduler-package','lib/scheduler-package-store','lib/scheduler-package-read','lib/scheduler-project-draft','lib/response','lib/request-security','lib/session','lib/user','routes/scheduler-package-create','routes/scheduler-packages'];
+const names=['lib/scheduler-contract','lib/scheduler-state','lib/scheduler-package','lib/scheduler-package-store','lib/scheduler-package-read','lib/scheduler-project-draft','lib/response','lib/request-security','lib/session','lib/user','routes/scheduler-package-create','routes/scheduler-packages','routes/scheduler-destinations'];
 // Preserve module scopes instead of concatenating declarations into one global scope.
 const compiled='const __modules={};\n'+names.map(n=>{const code=ts.transpileModule(fs.readFileSync(path.join(root,'worker',n+'.ts'),'utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText;
  const parts=n.split('/');parts.pop();
@@ -12,7 +12,8 @@ const worker=String.raw`export default {async fetch(request,env){
  const b=await request.json(),headers={'Content-Type':'application/json',Origin:b.origin??'https://fixture.invalid','Idempotency-Key':b.key??'fictional_request_01'};
  if(b.actor!==null)headers.Cookie='dfbk_session=fixture_'+(b.actor??'owner');
  const r=new Request('https://fixture.invalid'+(b.path??'/api/scheduler/packages'),{method:b.method??'POST',headers,...((b.method??'POST')==='POST'?{body:JSON.stringify(b.json)}:{})});
- const response=await __modules['routes/scheduler-packages'].handleSchedulerPackages(r,{DB:env.DB,MEDIA:env.MEDIA,SCHEDULER_READ_ENABLED:'true',SCHEDULER_DRAFT_WRITE_ENABLED:b.writeFlag??'true',SCHEDULER_DRAFT_MAX_TARGETS:'4',SCHEDULER_DRAFT_HORIZON_MS:String(4*86400000),SCHEDULER_DRAFT_MAX_MEDIA_BYTES:'1024'},new URL(r.url).pathname);
+ const router=b.path==='/api/scheduler/destinations'?__modules['routes/scheduler-destinations'].handleSchedulerDestinations:__modules['routes/scheduler-packages'].handleSchedulerPackages;
+ const response=await router(r,{DB:env.DB,MEDIA:env.MEDIA,SCHEDULER_READ_ENABLED:'true',SCHEDULER_DRAFT_WRITE_ENABLED:b.writeFlag??'true',SCHEDULER_DRAFT_MAX_TARGETS:'4',SCHEDULER_DRAFT_HORIZON_MS:String(4*86400000),SCHEDULER_DRAFT_MAX_MEDIA_BYTES:'1024',SCHEDULER_DRAFT_MAX_CREATES_PER_DAY:b.dayLimit??'100'},new URL(r.url).pathname);
  return Response.json({status:response.status,headers:Object.fromEntries(response.headers),body:await response.json()});
 }};`;
 function timeAfter(days){
@@ -27,7 +28,7 @@ function timeAfter(days){
   const db=await mf.getD1Database('DB'),bucket=await mf.getR2Bucket('MEDIA');
   await db.batch(["CREATE TABLE users(id TEXT PRIMARY KEY,email TEXT,email_verified INTEGER,role TEXT,plan TEXT,plan_source TEXT,trial_expires_at TEXT,plan_updated_at TEXT,created_at TEXT)","CREATE TABLE sessions(id TEXT PRIMARY KEY,user_id TEXT,token_hash TEXT,expires_at TEXT,revoked_at TEXT)","CREATE TABLE projects(id TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES users(id),status TEXT NOT NULL)","INSERT INTO users VALUES('owner','owner@example.invalid',1,'user','trial','system','2099-01-01 00:00:00',NULL,'2026-01-01'),('other','other@example.invalid',1,'user','trial','system','2099-01-01 00:00:00',NULL,'2026-01-01')","INSERT INTO projects VALUES('project','owner','ready')"].map(sql=>db.prepare(sql)));
   for(const actor of ['owner','other'])await db.prepare('INSERT INTO sessions VALUES(?1,?2,?3,?4,NULL)').bind(actor,actor,crypto.createHash('sha256').update('fixture_'+actor).digest('hex'),'2099-01-01T00:00:00Z').run();
-  for(const file of ['database/migrations/2026-09-22-project-media-v1.sql','database/tasks/2026-10-07-social-publishing-v1.sql','database/tasks/2026-11-02-publication-package-drafts.sql']){
+  for(const file of ['database/migrations/2026-09-22-project-media-v1.sql','database/tasks/2026-10-07-social-publishing-v1.sql','database/tasks/2026-11-02-publication-package-drafts.sql','database/tasks/2026-11-03-publication-draft-admissions.sql']){
    const statements=fs.readFileSync(path.join(root,file),'utf8').replace(/^--.*$/gm,'').split(';').map(s=>s.trim()).filter(Boolean);
    await db.batch(statements.map(sql=>db.prepare(sql)));
   }
@@ -44,10 +45,12 @@ function timeAfter(days){
   assert.equal((await call({actor:null})).status,401);assert.equal((await call({actor:'other'})).status,404);passed++;
   assert.equal((await call({origin:'https://other.invalid'})).status,403);assert.equal((await call({writeFlag:'false'})).status,405);passed++;
   const forged={...json,storageKey:'https://example.invalid/asset'};assert.equal((await call({json:forged})).status,400);passed++;
+  const destinationRead=await call({method:'GET',path:'/api/scheduler/destinations'});assert.equal(destinationRead.status,200);assert.equal(destinationRead.body.destinations.length,2);passed++;
+  const quotaRace=await Promise.all([call({key:'fictional_quota_01',dayLimit:'3'}),call({key:'fictional_quota_02',dayLimit:'3'})]);assert.deepEqual(quotaRace.map(r=>r.status).sort(),[201,429]);assert.equal((await call({dayLimit:'3'})).status,200);passed++;
   await bucket.delete('private/fixture.webp');assert.equal((await call()).status,200);assert.equal((await call({key:'fictional_request_03'})).status,409);passed++;
   await db.prepare('DELETE FROM publication_package_draft_receipts WHERE package_id=?1').bind(first.body.packageId).run();assert.equal((await call()).status,503);passed++;
-  assert.equal((await db.prepare('SELECT COUNT(*) n FROM publication_package_drafts').first()).n,2);
-  assert.equal((await db.prepare('SELECT COUNT(*) n FROM publication_package_draft_items').first()).n,4);
+  assert.equal((await db.prepare('SELECT COUNT(*) n FROM publication_package_drafts').first()).n,3);
+  assert.equal((await db.prepare('SELECT COUNT(*) n FROM publication_package_draft_items').first()).n,6);
   assert.equal((await db.prepare('SELECT COUNT(*) n FROM publication_jobs').first()).n,0);passed++;
   console.log('PASS '+passed+' ephemeral workerd/D1/R2 draft-create API scenarios; zero provider jobs');
  }finally{await mf.dispose();}

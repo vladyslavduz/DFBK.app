@@ -13,6 +13,7 @@ function draft(){return {id:'package',ownerId:'owner',projectId:'project',common
 function harness(){
  const db=new DatabaseSync(':memory:');db.exec('PRAGMA foreign_keys=ON;CREATE TABLE users(id TEXT PRIMARY KEY);CREATE TABLE projects(id TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES users(id));');
  db.exec(fs.readFileSync(new URL('../database/tasks/2026-11-02-publication-package-drafts.sql',import.meta.url),'utf8'));
+ db.exec(fs.readFileSync(new URL('../database/tasks/2026-11-03-publication-draft-admissions.sql',import.meta.url),'utf8'));
  db.exec("INSERT INTO users VALUES('owner'),('other');INSERT INTO projects VALUES('project','owner'),('foreign','other');");
  const h={db,writes:0,sessions:[],failAt:null,loseAck:false,beforeBatch:null,skipItem:false};
  const bind=values=>Object.fromEntries(values.map((v,i)=>['?'+(i+1),v]));
@@ -41,3 +42,43 @@ test('invalid input avoids DB; failure response does not expose SQL, recipients 
 
 test('interleaved identical requests share one stored package and child set',async()=>{const h=harness();try{let inner;h.beforeBatch=async()=>{h.beforeBatch=null;inner=await call(h);};const outer=await call(h);assert.equal(inner.cannotDispatch,true);assert.equal(outer.cannotDispatch,true);assert.ok(['saved','replayed'].includes(outer.status));assert.equal(h.snapshot()[0].length,1);assert.equal(h.snapshot()[1].length,2);assert.equal(h.snapshot()[2].length,1);}finally{h.db.close();}});
 test('three WhatsApp modes survive storage as separate typed destinations',async()=>{const h=harness();try{const input=draft(),template=input.items[0];input.items=['whatsapp_status','whatsapp_channel','whatsapp_recipient'].map((targetKind,i)=>({...structuredClone(template),scheduleId:'wa_'+i,targetKind,snapshot:{...template.snapshot,channel:'whatsapp'}}));assert.equal((await call(h,input)).status,'saved');const items=h.snapshot()[1];assert.deepEqual(items.map(v=>v.target_kind).sort(),['whatsapp_channel','whatsapp_recipient','whatsapp_status']);assert.equal((await call(h,input)).status,'replayed');assert.equal(h.writes,1);}finally{h.db.close();}});
+
+function quotaInput(prefix){const value=draft();value.id=prefix;value.items.forEach((item,i)=>item.scheduleId=prefix+'_'+i);return value;}
+test('rolling quota preserves replays, blocks new packages and excludes the exact 24h boundary',async()=>{
+ const h=harness();try{
+ const a=quotaInput('quota_a'),b=quotaInput('quota_b');
+ assert.equal((await save(h.port,'owner',key,a,now,policy,1)).status,'saved');
+ assert.equal((await save(h.port,'owner',key,a,now+1,policy,1)).status,'replayed');
+ assert.equal((await save(h.port,'owner','fictional_request_02',b,now+1,policy,1)).status,'rate_limited');
+ assert.equal(h.snapshot()[0].length,1);
+ assert.equal((await save(h.port,'owner','fictional_request_02',b,now+86400000,policy,1)).status,'saved');
+ assert.equal(h.snapshot()[0].length,2);
+ }finally{h.db.close();}
+});
+test('atomic quota guard rejects an arrival between admission read and write without partial children',async()=>{
+ const h=harness();try{
+ h.beforeBatch=async()=>{h.beforeBatch=null;assert.equal((await save(h.port,'owner','fictional_rival_01',quotaInput('rival'),now,policy,1)).status,'saved');};
+ assert.equal((await save(h.port,'owner',key,quotaInput('loser'),now,policy,1)).status,'rate_limited');
+ const [headers,items,receipts]=h.snapshot();assert.equal(headers.length,1);assert.equal(headers[0].id,'rival');assert.equal(items.length,2);assert.equal(receipts.length,1);
+ }finally{h.db.close();}
+});
+
+test('deleting a project does not replenish the rolling admission quota',async()=>{
+ const h=harness();try{
+ assert.equal((await save(h.port,'owner',key,quotaInput('first'),now,policy,1)).status,'saved');
+ h.db.exec("DELETE FROM projects WHERE id='project';INSERT INTO projects VALUES('project','owner')");
+ assert.equal(h.snapshot()[0].length,0);
+ assert.equal((await save(h.port,'owner','fictional_request_02',quotaInput('second'),now+1,policy,1)).status,'rate_limited');
+ assert.equal(h.db.prepare('SELECT COUNT(*) n FROM publication_package_draft_admissions').get().n,1);
+ }finally{h.db.close();}
+});
+test('silently missing quota ledger insert rolls back package, children and receipt',async()=>{
+ const h=harness();try{
+ const port={withSession(mode){const session=h.port.withSession(mode);return {...session,batch:statements=>session.batch(statements.filter(s=>!s.sql.startsWith('INSERT INTO publication_package_draft_admissions')))};}};
+ assert.equal((await save(port,'owner',key,quotaInput('lost_ledger'),now,policy,1)).status,'uncertain');
+ assert.deepEqual(h.snapshot().map(rows=>rows.length),[0,0,0]);
+ assert.equal(h.db.prepare('SELECT COUNT(*) n FROM publication_package_draft_admissions').get().n,0);
+ }finally{h.db.close();}
+});
+
+test('used key cannot create another package after project deletion',async()=>{const h=harness();try{assert.equal((await save(h.port,'owner',key,quotaInput('old'),now,policy,100)).status,'saved');h.db.exec("DELETE FROM projects WHERE id='project';INSERT INTO projects VALUES('project','owner')");assert.equal((await save(h.port,'owner',key,quotaInput('new'),now+1,policy,100)).status,'conflict');assert.equal(h.snapshot()[0].length,0);}finally{h.db.close();}});

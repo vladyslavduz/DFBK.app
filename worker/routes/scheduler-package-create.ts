@@ -3,7 +3,7 @@ import { requireUser, isTrialActive } from '../lib/user';
 import { readBoundedJson, requireSameOriginMutation } from '../lib/request-security';
 import { parseProjectDraftSelection, prepareProjectPackageDraft, type ProjectDraftSelection, type ProjectDraftPolicy } from '../lib/scheduler-project-draft';
 import { readOwnedDraftReceipt } from '../lib/scheduler-package-read';
-import { savePublicationPackageDraft } from '../lib/scheduler-package-store';
+import { draftRequestAdmission, checkPublicationDraftQuota, savePublicationPackageDraft } from '../lib/scheduler-package-store';
 import type { PackageDraft } from '../lib/scheduler-package';
 
 function reply(data:unknown,status:number):Response{
@@ -11,12 +11,12 @@ function reply(data:unknown,status:number):Response{
 }
 const failure=(code:string,status:number)=>reply({ok:false,error:{code}},status);
 const success=(id:string,replayed:boolean)=>reply({ok:true,packageId:id,status:'draft',replayed,cannotDispatch:true},replayed?200:201);
-function configuredPolicy(env:Env):ProjectDraftPolicy|null{
- const values=[env.SCHEDULER_DRAFT_MAX_TARGETS,env.SCHEDULER_DRAFT_HORIZON_MS,env.SCHEDULER_DRAFT_MAX_MEDIA_BYTES];
+function configuredPolicy(env:Env):(ProjectDraftPolicy&{maxCreatesPerDay:number})|null{
+ const values=[env.SCHEDULER_DRAFT_MAX_TARGETS,env.SCHEDULER_DRAFT_HORIZON_MS,env.SCHEDULER_DRAFT_MAX_MEDIA_BYTES,env.SCHEDULER_DRAFT_MAX_CREATES_PER_DAY];
  if(values.some(v=>typeof v!=='string'||!/^[1-9][0-9]{0,15}$/.test(v)))return null;
- const [maxTargets,horizonMs,maxMediaBytes]=values.map(Number);
- if(![maxTargets,horizonMs,maxMediaBytes].every(Number.isSafeInteger)||maxTargets>1000||maxMediaBytes>10*1024*1024)return null;
- return {maxTargets,horizonMs,maxMediaBytes};
+ const [maxTargets,horizonMs,maxMediaBytes,maxCreatesPerDay]=values.map(Number);
+ if(![maxTargets,horizonMs,maxMediaBytes,maxCreatesPerDay].every(Number.isSafeInteger)||maxTargets>1000||maxMediaBytes>10*1024*1024)return null;
+ return {maxTargets,horizonMs,maxMediaBytes,maxCreatesPerDay};
 }
 const confirmed=(t:{localDateTime:string;timezone:string;utcOffset:string})=>({localDateTime:t.localDateTime,timezone:t.timezone,utcOffset:t.utcOffset,confirmed:true});
 function selectionIdentity(selection:ProjectDraftSelection):string{
@@ -68,16 +68,24 @@ export async function handleSchedulerPackageCreate(request:Request,env:Env):Prom
    return matchesSelection(receipt.data.draft,selection)?success(receipt.data.draft.id,true):failure('SCHEDULER_REQUEST_CONFLICT',409);
   };
   const previous=await replay();if(previous)return previous;
+  const owned=(await env.DB.withSession('first-primary').prepare('SELECT id FROM projects WHERE id=?1 AND user_id=?2').bind(selection.projectId,actor.id).all()).results;
+  if(!Array.isArray(owned)||owned.length!==1||owned[0].id!==selection.projectId)return failure('DRAFT_MATERIAL_NOT_FOUND',404);
+  const prior=await draftRequestAdmission(env.DB,actor.id,key);
+  if(prior==='unavailable')return failure('SCHEDULER_UNAVAILABLE',503);
+  if(prior==='used')return await replay()||failure('SCHEDULER_REQUEST_CONFLICT',409);
   // Historical reads/replays remain allowed, but creating another draft needs an active account.
   if(actor.email_verified!==1)return failure('EMAIL_NOT_VERIFIED',403);
   if(actor.plan!=='business'&&!isTrialActive(actor))return failure('PLAN_ACCESS_REQUIRED',403);
   const now=Date.now();
+  const quota=await checkPublicationDraftQuota(env.DB,actor.id,now,policy.maxCreatesPerDay);
+  if(quota!=='available')return failure(quota==='rate_limited'?'SCHEDULER_DRAFT_RATE_LIMITED':'SCHEDULER_UNAVAILABLE',quota==='rate_limited'?429:503);
   const prepared=await prepareProjectPackageDraft(env.DB,env.MEDIA,actor.id,key,json,now,policy);
   if(!prepared.ok)return preparationError(prepared.error);
-  const saved=await savePublicationPackageDraft(env.DB,actor.id,key,saveInput(prepared.value),now,{maxTargets:policy.maxTargets,horizonMs:policy.horizonMs});
+  const saved=await savePublicationPackageDraft(env.DB,actor.id,key,saveInput(prepared.value),now,{maxTargets:policy.maxTargets,horizonMs:policy.horizonMs},policy.maxCreatesPerDay);
   if(saved.status==='saved'||saved.status==='replayed')return success(saved.packageId!,saved.status==='replayed');
   // Covers overlapping requests/lost acknowledgements; never a second write.
   const recovered=await replay();if(recovered)return recovered;
+  if(saved.status==='rate_limited')return failure('SCHEDULER_DRAFT_RATE_LIMITED',429);
   if(saved.status==='not_found')return failure('DRAFT_MATERIAL_NOT_FOUND',404);
   if(saved.status==='conflict')return failure('SCHEDULER_REQUEST_CONFLICT',409);
   return failure(saved.status==='uncertain'?'SCHEDULER_SAVE_UNCERTAIN':'SCHEDULER_DATA_UNAVAILABLE',503);
