@@ -35,6 +35,7 @@
     "META_APP_ID": "1339867144748655",
     "META_GRAPH_VERSION": "v26.0",
     "SOCIAL_ENABLED": "false",
+    "SCHEDULER_READ_ENABLED": "true",
     "SOCIAL_PUBLIC_ORIGIN": "https://dfbk.app"
   },
 
