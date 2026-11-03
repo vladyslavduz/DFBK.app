@@ -31,7 +31,7 @@ const childReadSelect='SELECT i.id,i.package_id,i.user_id,i.project_id,i.positio
 const readOwnerScope='p.user_id=?1 AND EXISTS(SELECT 1 FROM projects WHERE id=p.project_id AND user_id=p.user_id)';
 const detailHeaderSql=headerReadSelect+' WHERE '+readOwnerScope+' AND p.id=?2';
 const detailChildrenSql=childReadSelect+' WHERE '+readOwnerScope+' AND p.id=?2 ORDER BY i.position';
-const pageReadCte='WITH selected AS (SELECT p.id FROM publication_package_drafts p WHERE '+readOwnerScope+' AND (?2=\'\' OR p.project_id=?2) AND (?3=0 OR p.created_at_ms<?4 OR (p.created_at_ms=?4 AND p.id<?5)) ORDER BY p.created_at_ms DESC,p.id DESC LIMIT ?6) ';
+const pageReadCte='WITH selected AS (SELECT p.id FROM publication_package_drafts p WHERE '+readOwnerScope+' AND (?2=\'\' OR p.project_id=?2) AND (?7=0 OR EXISTS(SELECT 1 FROM publication_package_draft_items ci WHERE ci.package_id=p.id AND ci.user_id=p.user_id AND ci.project_id=p.project_id AND CASE WHEN json_valid(ci.draft_json) THEN CASE WHEN json_type(ci.draft_json,\'$.schedule.time.scheduledAt\')=\'integer\' THEN json_extract(ci.draft_json,\'$.schedule.time.scheduledAt\')>=?8 AND json_extract(ci.draft_json,\'$.schedule.time.scheduledAt\')<?9 ELSE 1 END ELSE 1 END=1)) AND (?3=0 OR p.created_at_ms<?4 OR (p.created_at_ms=?4 AND p.id<?5)) ORDER BY p.created_at_ms DESC,p.id DESC LIMIT ?6) ';
 const listHeaderSql=pageReadCte+headerReadSelect+' JOIN selected s ON s.id=p.id ORDER BY p.created_at_ms DESC,p.id DESC';
 const listChildrenSql=pageReadCte+childReadSelect+' JOIN selected s ON s.id=p.id ORDER BY i.package_id,i.position';
 function readRows(batch:unknown,index:number):unknown[]{
@@ -100,21 +100,23 @@ export async function readOwnedPackageDraft(db:PackageDatabase,owner:string,pack
 /** Bounded keyset list, newest creation first. Not yet a calendar-month API. */
 export async function listOwnedPackageDrafts(db:PackageDatabase,owner:string,query:unknown):Promise<PackageReadResult<PackageList>>{
  if(!validReadId(owner))return readError('invalid');
- let limit:number,projectId:string,cursor:Cursor|null;
+ let limit:number,projectId:string,cursor:Cursor|null,from:number|undefined,to:number|undefined;
  try{
-  const q=readRecord(query,['limit'],['projectId','cursor']);
+  const q=readRecord(query,['limit'],['projectId','cursor','from','to']);
   if(!q||!Number.isInteger(q.limit)||Number(q.limit)<1||Number(q.limit)>20)return readError('invalid');
   if(Object.hasOwn(q,'projectId')&&!validReadId(q.projectId))return readError('invalid');
+  if(Object.hasOwn(q,'from')!==Object.hasOwn(q,'to'))return readError('invalid');
+  if(Object.hasOwn(q,'from')){if(!validInstant(q.from)||!validInstant(q.to)||q.to<=q.from||q.to-q.from>93*86400000)return readError('invalid');from=q.from;to=q.to;}
   limit=Number(q.limit);projectId=typeof q.projectId==='string'?q.projectId:'';cursor=null;
   if(Object.hasOwn(q,'cursor')){const c=readRecord(q.cursor,['createdAt','id']);if(!c||!validInstant(c.createdAt)||!validReadId(c.id))return readError('invalid');cursor={createdAt:c.createdAt,id:c.id};}
  }catch{return readError('invalid');}
  let batch:unknown;
- try{const s=db.withSession('first-primary'),values=[owner,projectId,cursor?1:0,cursor?.createdAt??0,cursor?.id??'',limit+1];batch=await s.batch([s.prepare(listHeaderSql).bind(...values),s.prepare(listChildrenSql).bind(...values)]);}catch{return readError('unavailable');}
+ try{const s=db.withSession('first-primary'),values=[owner,projectId,cursor?1:0,cursor?.createdAt??0,cursor?.id??'',limit+1,from===undefined?0:1,from??0,to??0];batch=await s.batch([s.prepare(listHeaderSql).bind(...values),s.prepare(listChildrenSql).bind(...values)]);}catch{return readError('unavailable');}
  try{
   const headers=readRows(batch,0),children=readRows(batch,1);if(headers.length>limit+1)throw Error('PAGE_BOUND');
   const decoded=decodeReadRows(headers,children,owner);
   for(let i=0;i<decoded.length;i++){
-   const current=decoded[i];if(projectId&&current.draft.projectId!==projectId)throw Error('FILTER_MISMATCH');
+   const current=decoded[i];if(from!==undefined&&to!==undefined&&!current.draft.items.some(item=>item.schedule.time.scheduledAt>=from!&&item.schedule.time.scheduledAt<to!))throw Error('DATE_FILTER_MISMATCH');if(projectId&&current.draft.projectId!==projectId)throw Error('FILTER_MISMATCH');
    if(cursor&&(current.createdAt>cursor.createdAt||(current.createdAt===cursor.createdAt&&current.draft.id>=cursor.id)))throw Error('CURSOR_MISMATCH');
    if(i){const previous=decoded[i-1];if(previous.createdAt<current.createdAt||(previous.createdAt===current.createdAt&&previous.draft.id<=current.draft.id))throw Error('PAGE_ORDER');}
   }

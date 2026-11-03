@@ -33,7 +33,7 @@ export async function handleSchedulerPackages(request:Request,env:Env,pathname:s
   // No package-schema query occurs when this flag is absent or not exactly true.
   if(env.SCHEDULER_READ_ENABLED!=='true')return schedulerFailure('SCHEDULER_DISABLED',503);
   const params=url.searchParams;
-  const allowed=detail===null?['limit','projectId','cursorCreatedAt','cursorId']:[];
+  const allowed=detail===null?['limit','projectId','cursorCreatedAt','cursorId','from','to']:[];
   for(const key of params.keys())if(!allowed.includes(key)||params.getAll(key).length!==1)return schedulerFailure('INVALID_SCHEDULER_QUERY',400);
   if(detail!==null){
    let id:string;try{id=decodeURIComponent(detail);}catch{return schedulerFailure('INVALID_SCHEDULER_QUERY',400);}
@@ -42,7 +42,7 @@ export async function handleSchedulerPackages(request:Request,env:Env,pathname:s
   }
   const limitText=params.get('limit')??'20';
   if(!/^(?:[1-9]|1[0-9]|20)$/.test(limitText))return schedulerFailure('INVALID_SCHEDULER_QUERY',400);
-  const query:{limit:number;projectId?:string;cursor?:{createdAt:number;id:string}}={limit:Number(limitText)};
+  const query:{limit:number;projectId?:string;from?:number;to?:number;cursor?:{createdAt:number;id:string}}={limit:Number(limitText)};
   if(params.has('projectId'))query.projectId=params.get('projectId')!;
   if(params.has('cursorCreatedAt')!==params.has('cursorId'))return schedulerFailure('INVALID_SCHEDULER_QUERY',400);
   if(params.has('cursorCreatedAt')){
@@ -50,6 +50,8 @@ export async function handleSchedulerPackages(request:Request,env:Env,pathname:s
    if(!/^-?[0-9]{1,16}$/.test(value))return schedulerFailure('INVALID_SCHEDULER_QUERY',400);
    query.cursor={createdAt:Number(value),id:params.get('cursorId')!};
   }
+  if(params.has('from')!==params.has('to'))return schedulerFailure('INVALID_SCHEDULER_QUERY',400);
+  if(params.has('from')){for(const key of ['from','to'])if(!/^-?[0-9]{1,16}$/.test(params.get(key)!))return schedulerFailure('INVALID_SCHEDULER_QUERY',400);query.from=Number(params.get('from'));query.to=Number(params.get('to'));}
   const result=await listOwnedPackageDrafts(env.DB,actor.id,query);
   return result.status==='ok'?schedulerJson({ok:true,...result.data,cannotDispatch:true}):schedulerReadFailure(result);
  }catch{return schedulerFailure('SCHEDULER_UNAVAILABLE',503);}
