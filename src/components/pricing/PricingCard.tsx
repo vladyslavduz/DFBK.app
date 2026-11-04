@@ -1,3 +1,4 @@
+import PaymentInfoButton from '../PaymentInfoButton';
 import AppLink from '../AppLink';
 import { pricingConfig } from '../../config/pricing';
 
@@ -33,7 +34,7 @@ export default function PricingCard({ plan }: Props) {
 
       <div className="pricing-v1-card-footer">
         <p>{plan.audience}</p>
-        <AppLink className={`button pricing-v1-cta${isPro ? '' : ' button-secondary'}`} to={plan.ctaTo}>{plan.cta}</AppLink>
+        <>{isPro ? <PaymentInfoButton className="button pricing-v1-cta" /> : <AppLink className="button pricing-v1-cta button-secondary" to={plan.ctaTo}>{plan.cta}</AppLink>}</>
         {plan.note && <small>{plan.note}</small>}
       </div>
     </article>

@@ -1,3 +1,4 @@
+import PaymentInfoButton from '../components/PaymentInfoButton';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import AppIcon from '../components/AppIcon';
 import AppLink from '../components/AppLink';
@@ -136,7 +137,7 @@ export default function CreateProjectPage() {
           <h1>Deine Testphase ist vollständig genutzt.</h1>
           <p>Du hast DFBK.app mit 5 eigenen Projekten ausprobiert.</p>
           <div className="trial-limit-actions">
-            <AppLink className="button" to="/app/billing">Mit Business weitermachen</AppLink>
+            <PaymentInfoButton />
             <AppLink className="button button-secondary" to="/app/projects">Meine Projekte</AppLink>
           </div>
         </section>
