@@ -10,14 +10,14 @@ function load(name) {
   new Function('require', 'module', 'exports', ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText)(p => { assert.ok(p.startsWith('./')); return load(p.slice(2)); }, m, m.exports);
   modules.set(name, m.exports); return m.exports;
 }
-const { evaluatePublicationEntitlement: evaluate, TRIAL_SEND_SCOPE, TRIAL_EXISTING_PROJECT_LIMIT } = load('publication-entitlements');
+const { evaluatePublicationEntitlement: evaluate, TRIAL_SEND_SCOPE, TRIAL_LIFETIME_PROJECT_LIMIT } = load('publication-entitlements');
 const now = Date.parse('2026-11-04T12:00:00Z');
 const trial = { plan: 'trial', access: 'active', trialExpiresAt: '2026-11-05 00:00:00' };
 const usage = (consumed = 0, reserved = 0) => ({ scope: TRIAL_SEND_SCOPE, consumed, reserved });
 const input = (values = {}) => ({ account: trial, usage: usage(), now, ...values });
 
-test('active Trial: 5 existing projects, 15 lifetime successful sends, reservations reduce available capacity', () => {
-  assert.equal(TRIAL_EXISTING_PROJECT_LIMIT, 5);
+test('active Trial target: 3 lifetime projects, 15 lifetime successful sends, reservations reduce available capacity', () => {
+  assert.equal(TRIAL_LIFETIME_PROJECT_LIMIT, 3);
   const r = evaluate(input({ usage: usage(7, 3) }));
   assert.equal(r.status, 'available'); assert.equal(r.cannotDispatch, true);
   assert.deepEqual(r.budget, { unit: 'successful_send_per_channel', scope: TRIAL_SEND_SCOPE, limit: 15, consumed: 7, reserved: 3, remaining: 5 });

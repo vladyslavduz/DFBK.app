@@ -1,8 +1,8 @@
 import { isTrialActive } from './user';
-import { TRIAL_PROJECT_LIMIT } from './project-management';
 
 /** Approved PRODUCT_BASELINE target only. Not wired into runtime gates or enforcement. */
-export const TRIAL_EXISTING_PROJECT_LIMIT = TRIAL_PROJECT_LIMIT;
+// Target is lifetime; legacy runtime COUNT(existing) cap remains separate until activation.
+export const TRIAL_LIFETIME_PROJECT_LIMIT = 3;
 export const TRIAL_SUCCESSFUL_SEND_LIMIT = 15;
 export const TRIAL_SEND_SCOPE = 'trial_lifetime_successful_sends';
 export type PublicationUsage = { scope: string; consumed: number; reserved: number };
