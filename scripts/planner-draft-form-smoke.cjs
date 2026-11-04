@@ -40,7 +40,7 @@ const origin=process.env.PROMO_ORIGIN||'http://127.0.0.1:4185',image=fs.readFile
  async function open(id='selected'){await page.goto(origin+'/app/projects/'+id+'/publish');await page.getByRole('button',{name:'Entwurf im Planer vorbereiten',exact:true}).click();await form().getByText('Fixture instagram',{exact:true}).waitFor();}
  async function choose(){await form().getByRole('checkbox',{name:'Instagram für Entwurf auswählen',exact:true}).check();await form().getByLabel('Gemeinsame Zeit',{exact:true}).fill('2027-01-15T12:00');}
  await open();console.log('CHECK catalogue');assert.equal(posts.length,0);assert.equal(await form().getByRole('checkbox').count(),9);
- for(const name of ['Pinterest','WhatsApp','X','LinkedIn','E-Mail','Google Business','Website / Blog'])assert.equal(await form().getByRole('checkbox',{name:name+' für Entwurf auswählen',exact:true}).isDisabled(),true);
+ for(const name of ['Pinterest','WhatsApp','X','LinkedIn','E-Mail','Google Business','Website / Blog'])assert.equal(await form().getByRole('checkbox',{name:name+' für Entwurf auswählen',exact:true}).isDisabled(),false);
  await choose();await form().getByRole('checkbox',{name:'Facebook für Entwurf auswählen',exact:true}).check();
  await form().getByLabel('Text für Instagram (Entwurf)',{exact:true}).fill('Edited IG fixture');
  assert.equal(await form().getByLabel('Text für Facebook (Entwurf)',{exact:true}).inputValue(),'selected Facebook text');
@@ -81,8 +81,8 @@ const origin=process.env.PROMO_ORIGIN||'http://127.0.0.1:4185',image=fs.readFile
  assert.equal(await form().getByText('Entwurf im Planer gespeichert.',{exact:true}).count(),0);
  fs.mkdirSync('artifacts/planner-draft',{recursive:true});await form().screenshot({path:'artifacts/planner-draft/mobile-320.png'});
  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
- // No connections: selection disabled. Incomplete project/guest: no form.
- connected=false;await page.reload();await page.getByRole('button',{name:'Entwurf im Planer vorbereiten',exact:true}).click();await form().getByText('Verbundenes Konto erforderlich',{exact:true}).first().waitFor();assert.equal(await form().getByRole('checkbox',{name:'Instagram für Entwurf auswählen',exact:true}).isDisabled(),true);
+ // No connections: preparation enabled, server save blocked. Incomplete project/guest: no form.
+ connected=false;await page.reload();await page.getByRole('button',{name:'Entwurf im Planer vorbereiten',exact:true}).click();await form().getByText('Nur Vorbereitung · Verbindung nicht bestätigt',{exact:true}).first().waitFor();assert.equal(await form().getByRole('checkbox',{name:'Instagram für Entwurf auswählen',exact:true}).isDisabled(),false);
  projectStatus='processing';await page.reload();await page.getByRole('heading',{name:'Dein Projekt wird noch verarbeitet',exact:true}).waitFor();assert.equal(await page.getByRole('button',{name:'Entwurf im Planer vorbereiten',exact:true}).count(),0);
  guest=true;await page.reload();await page.waitForTimeout(150);assert.equal(await page.getByRole('button',{name:'Entwurf im Planer vorbereiten',exact:true}).count(),0);
  assert.ok(posts.every(p=>p.path==='/api/scheduler/packages'));assert.deepEqual(errors,[]);
