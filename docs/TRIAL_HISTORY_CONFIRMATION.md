@@ -66,7 +66,10 @@ tests/trial-history-confirmation.test.mjs and tests/trial-project-admission.test
 wrapper could not spawn children in the Windows sandbox (EPERM); direct node:test
 execution completed both suites with zero failures. No broad build/test run.
 
-The canonical PRODUCT_BASELINE.md currently describes temporarily dropping/restoring a
-guard per confirmation. This reviewed proposal supersedes that mechanism only by central
-acceptance: a permanent conditional guard plus immutable receipt is narrower and safer.
-Centre owns any canonical wording update; no change to the human history policy.
+Central review accepted this implementation mechanism on 2026-11-05: permanent conditional
+guard plus immutable confirmation receipt, with the guard replaced once only during a
+future separately authorized schema migration, never dropped/restored per confirmation.
+The [canonical product baseline](PRODUCT_BASELINE.md) now records that acceptance.
+This is not production DDL/deployment/activation approval; both Trial tasks remain unapplied
+to production and the authenticated admin handler/API remains unimplemented. The human
+history policy, 3 lifetime projects and 15 successful lifetime sends are unchanged.
