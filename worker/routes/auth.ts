@@ -1098,8 +1098,6 @@ async function microsoftCallback(request: Request, env: Env): Promise<Response> 
     const { idToken, accessToken } = await exchangeMicrosoftCode(env, code, attempt.verifier);
     stage = 'identity_validation';
     const identity = await validateMicrosoftIdentity(env, idToken, attempt.nonce);
-    stage = 'profile_fetch';
-    const email = await fetchMicrosoftProfile(accessToken, identity);
     const subject = `${identity.tid.toLowerCase()}:${identity.sub}`;
     stage = 'user_lookup';
     const linked = await env.DB.prepare(`SELECT id FROM users WHERE microsoft_sub=?1 LIMIT 1`)
@@ -1108,6 +1106,8 @@ async function microsoftCallback(request: Request, env: Env): Promise<Response> 
     if (attempt.mode === 'link') {
       if (linked && linked.id !== linkingUserId) return fail('account_conflict');
       if (!linked) {
+        stage = 'profile_fetch';
+        await fetchMicrosoftProfile(accessToken, identity);
         stage = 'user_link';
         const update = await env.DB.prepare(`UPDATE users SET microsoft_sub=?1 WHERE id=?2 AND microsoft_sub IS NULL`)
           .bind(subject, linkingUserId).run();
@@ -1117,6 +1117,8 @@ async function microsoftCallback(request: Request, env: Env): Promise<Response> 
     } else if (linked) {
       userId = linked.id;
     } else {
+      stage = 'profile_fetch';
+      const email = await fetchMicrosoftProfile(accessToken, identity);
       if (!email) return fail('email_unavailable');
       // Microsoft email/UPN is not proof of ownership of an existing DFBK account.
       stage = 'email_collision_lookup';
@@ -1137,9 +1139,10 @@ async function microsoftCallback(request: Request, env: Env): Promise<Response> 
   } catch (error) {
     const reason = error instanceof MicrosoftOAuthError ? error.reason : 'callback_failed';
     // Fixed reason only: never log authorization codes, identity/access tokens, or provider bodies.
-    // Log fixed stage and built-in exception class only; never error.message or request data.
+    // Log the fixed stage, exception class and HTTP status, never provider bodies.
     const errorType = error instanceof Error ? error.name : 'UnknownError';
-    console.error('MICROSOFT_CALLBACK_FAILED', reason, stage, errorType);
+    const providerStatus = error instanceof MicrosoftOAuthError ? error.providerStatus : undefined;
+    console.error('MICROSOFT_CALLBACK_FAILED', reason, stage, errorType, providerStatus);
     return fail(reason);
   }
 }
