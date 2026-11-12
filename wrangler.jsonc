@@ -26,6 +26,14 @@
     }
   ],
 
+  "ratelimits": [
+    {
+      "name": "BUSINESS_CONTACT_LIMIT",
+      "namespace_id": "5601207",
+      "simple": { "limit": 5, "period": 60 }
+    }
+  ],
+
   "vars": {
     "EMAIL_FROM": "DFBK.app <noreply@auth.dfbk.app>",
     "GOOGLE_CLIENT_ID": "1042544046802-b4ajqujncpjjba3o308n4v0ramlo8nif.apps.googleusercontent.com",

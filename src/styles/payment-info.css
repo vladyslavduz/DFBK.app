@@ -5,3 +5,18 @@
 .payment-info__actions { display:flex; flex-wrap:wrap; gap:12px; margin-top:20px; }
 .payment-info__actions .button { white-space:normal; min-height:44px; }
 .payment-info :focus-visible { outline:3px solid #2969ff; outline-offset:3px; }
+
+.payment-info { max-height: calc(100dvh - 32px); overflow-y: auto; overflow-wrap: anywhere; }
+.payment-info__form label { display: block; margin: 12px 0 4px; }
+.payment-info__form input,
+.payment-info__form textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px;
+  border: 1px solid var(--border, #c8d7e6);
+  border-radius: 8px;
+  color: inherit;
+  font: inherit;
+}
+.payment-info__form textarea { resize: vertical; }
+.payment-info__challenge { margin-top: 12px; }
