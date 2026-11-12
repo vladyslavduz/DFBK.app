@@ -51,7 +51,7 @@ async function begin(env, link = false) {
     cookie: result.headers.get('set-cookie').split(';')[0], url };
 }
 
-function provider(nonce, { email = 'new@example.com', claims = {}, graphId = oid, error = false } = {}) {
+function provider(nonce, { email = 'new@example.com', claims = {}, graphId = oid, error = false, graphStatus } = {}) {
   let exchanges = 0;
   globalThis.fetch = async (input, options = {}) => {
     const url = String(input);
@@ -66,6 +66,7 @@ function provider(nonce, { email = 'new@example.com', claims = {}, graphId = oid
     if (url.endsWith('/keys')) return Response.json({ keys: [jwk] });
     if (url.startsWith('https://graph.microsoft.com/')) {
       assert.equal(options.headers.Authorization, 'Bearer private-access-token');
+      if (graphStatus) return new Response('private-graph-detail', { status: graphStatus });
       return Response.json({ id: graphId, mail: email, userPrincipalName: email });
     }
     throw new Error('Unexpected provider endpoint');
@@ -119,11 +120,25 @@ test('email collision cannot take over a Google/password account; authenticated 
   assert.equal(db.prepare('SELECT COUNT(*) AS n FROM users').get().n, 2);
 
   attempt = await begin(env);
-  provider(attempt.nonce, { email: 'changed@example.com' });
+  provider(attempt.nonce, { graphStatus: 403 });
   response = await callback(env, attempt);
   assert.equal(new URL(response.headers.get('location')).searchParams.get('auth'), 'microsoft_success');
   assert.equal(db.prepare('SELECT COUNT(*) AS n FROM users').get().n, 2);
   db.close();
+});
+
+test('Graph HTTP failure at first sign-in records status and creates no user or session', async t => {
+  const { db, env } = await setup();
+  t.after(() => db.close());
+  const log = t.mock.method(console, 'error', () => {});
+  const attempt = await begin(env);
+  provider(attempt.nonce, { graphStatus: 403, claims: { email: 'new@example.com' } });
+  const response = await callback(env, attempt);
+  assert.equal(new URL(response.headers.get('location')).searchParams.get('reason'), 'profile_unavailable');
+  assert.deepEqual(log.mock.calls.at(-1).arguments,
+    ['MICROSOFT_CALLBACK_FAILED', 'profile_unavailable', 'profile_fetch', 'Error', 403]);
+  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM users').get().n, 2);
+  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM sessions').get().n, 2);
 });
 
 test('tampered state, another browser session, wrong audience and provider failure create no users', async () => {

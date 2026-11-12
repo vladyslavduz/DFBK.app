@@ -1,6 +1,6 @@
 import { requireUser, serializeUser } from '../lib/user';
 import type { Env } from '../lib/env';
-import { json, notImplemented } from '../lib/response';
+import { json } from '../lib/response';
 
 import {
   hashPassword,
@@ -183,16 +183,19 @@ function redirectWithCookies(
   });
 }
 
+class LoginCredentialsChanged extends Error {}
+
 async function createSessionForUser(
   env: Env,
-  userId: string
+  userId: string,
+  expectedPasswordHash: string | null = null
 ): Promise<CreatedSession> {
   const sessionToken = createSessionToken();
   const tokenHash = await hashSessionToken(sessionToken);
   const sessionId = crypto.randomUUID();
   const expiresAt = getSessionExpiry();
 
-  await env.DB
+  const inserted = await env.DB
     .prepare(
       `
       INSERT INTO sessions (
@@ -201,16 +204,20 @@ async function createSessionForUser(
         token_hash,
         expires_at
       )
-      VALUES (?1, ?2, ?3, ?4)
+      SELECT ?1, ?2, ?3, ?4
+      WHERE ?5 IS NULL OR EXISTS (SELECT 1 FROM users WHERE id = ?2 AND password_hash = ?5)
       `
     )
     .bind(
       sessionId,
       userId,
       tokenHash,
-      expiresAt.toISOString()
+      expiresAt.toISOString(),
+      expectedPasswordHash
     )
     .run();
+
+  if (inserted.meta.changes !== 1) throw new LoginCredentialsChanged();
 
   return {
     token: sessionToken,
@@ -256,7 +263,7 @@ export async function handleAuth(
     pathname === '/api/auth/verify-email' &&
     request.method === 'GET'
   ) {
-    return verifyEmail(request, env);
+    return handleVerificationLink(request, env);
   }
 
   if (
@@ -279,26 +286,6 @@ export async function handleAuth(
 
   if (pathname === '/api/auth/microsoft/callback' && request.method === 'GET') {
     return microsoftCallback(request, env);
-  }
-
-  if (
-    pathname === '/api/auth/forgot-password' &&
-    request.method === 'POST'
-  ) {
-    return notImplemented(
-      'auth.forgotPassword',
-      ['RESEND_API_KEY']
-    );
-  }
-
-  if (
-    pathname === '/api/auth/reset-password' &&
-    request.method === 'POST'
-  ) {
-    return notImplemented(
-      'auth.resetPassword',
-      ['RESEND_API_KEY']
-    );
   }
 
   return null;
@@ -509,6 +496,21 @@ async function register(
 /* =========================================================
  * VERIFY EMAIL
  * ========================================================= */
+
+async function handleVerificationLink(request: Request, env: Env): Promise<Response> {
+  const browser = request.headers.get('Accept')?.includes('text/html');
+  let result: Response;
+  try {
+    result = await verifyEmail(request, env);
+  } catch {
+    console.error('VERIFY_EMAIL_LOOKUP_FAILED');
+    result = json({ ok: false, error: 'EMAIL_VERIFICATION_FAILED' }, 500);
+  }
+  if (!browser) return result;
+
+  const status = result.ok ? 'success' : result.status === 410 ? 'expired' : result.status >= 500 ? 'error' : 'invalid';
+  return redirectWithCookies('/verify-email?status=' + status, []);
+}
 
 async function verifyEmail(
   request: Request,
@@ -728,9 +730,13 @@ async function login(
   try {
     session = await createSessionForUser(
       env,
-      user.id
+      user.id,
+      user.password_hash
     );
   } catch (error) {
+    if (error instanceof LoginCredentialsChanged) {
+      return json({ ok: false, error: 'INVALID_CREDENTIALS' }, 401);
+    }
     console.error(
       'LOGIN_SESSION_DB_ERROR',
       error
@@ -1092,8 +1098,6 @@ async function microsoftCallback(request: Request, env: Env): Promise<Response> 
     const { idToken, accessToken } = await exchangeMicrosoftCode(env, code, attempt.verifier);
     stage = 'identity_validation';
     const identity = await validateMicrosoftIdentity(env, idToken, attempt.nonce);
-    stage = 'profile_fetch';
-    const email = await fetchMicrosoftProfile(accessToken, identity);
     const subject = `${identity.tid.toLowerCase()}:${identity.sub}`;
     stage = 'user_lookup';
     const linked = await env.DB.prepare(`SELECT id FROM users WHERE microsoft_sub=?1 LIMIT 1`)
@@ -1102,6 +1106,8 @@ async function microsoftCallback(request: Request, env: Env): Promise<Response> 
     if (attempt.mode === 'link') {
       if (linked && linked.id !== linkingUserId) return fail('account_conflict');
       if (!linked) {
+        stage = 'profile_fetch';
+        await fetchMicrosoftProfile(accessToken, identity);
         stage = 'user_link';
         const update = await env.DB.prepare(`UPDATE users SET microsoft_sub=?1 WHERE id=?2 AND microsoft_sub IS NULL`)
           .bind(subject, linkingUserId).run();
@@ -1111,6 +1117,8 @@ async function microsoftCallback(request: Request, env: Env): Promise<Response> 
     } else if (linked) {
       userId = linked.id;
     } else {
+      stage = 'profile_fetch';
+      const email = await fetchMicrosoftProfile(accessToken, identity);
       if (!email) return fail('email_unavailable');
       // Microsoft email/UPN is not proof of ownership of an existing DFBK account.
       stage = 'email_collision_lookup';
@@ -1131,9 +1139,10 @@ async function microsoftCallback(request: Request, env: Env): Promise<Response> 
   } catch (error) {
     const reason = error instanceof MicrosoftOAuthError ? error.reason : 'callback_failed';
     // Fixed reason only: never log authorization codes, identity/access tokens, or provider bodies.
-    // Log fixed stage and built-in exception class only; never error.message or request data.
+    // Log the fixed stage, exception class and HTTP status, never provider bodies.
     const errorType = error instanceof Error ? error.name : 'UnknownError';
-    console.error('MICROSOFT_CALLBACK_FAILED', reason, stage, errorType);
+    const providerStatus = error instanceof MicrosoftOAuthError ? error.providerStatus : undefined;
+    console.error('MICROSOFT_CALLBACK_FAILED', reason, stage, errorType, providerStatus);
     return fail(reason);
   }
 }

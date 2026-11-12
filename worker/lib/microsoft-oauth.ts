@@ -25,7 +25,7 @@ type IdClaims = {
 };
 
 export class MicrosoftOAuthError extends Error {
-  constructor(readonly reason: string) { super(reason); }
+  constructor(readonly reason: string, readonly providerStatus?: number) { super(reason); }
 }
 
 function configured(env: Env): asserts env is Env & {
@@ -172,8 +172,7 @@ export async function validateMicrosoftIdentity(env: Env, idToken: string, nonce
 export async function fetchMicrosoftProfile(accessToken: string, identity: IdClaims): Promise<string | null> {
   const response = await fetch(GRAPH_ME_URL, { headers: { Authorization: `Bearer ${accessToken}` },
     redirect: 'manual', signal: AbortSignal.timeout(15_000) });
-  if (response.status >= 300 && response.status < 400) throw new MicrosoftOAuthError('profile_unavailable');
-  if (!response.ok) throw new MicrosoftOAuthError('profile_unavailable');
+  if (!response.ok) throw new MicrosoftOAuthError('profile_unavailable', response.status);
   const profile = await readJson(response);
   // Personal Microsoft accounts can expose a Graph /me ID in a different
   // identifier namespace from the signed ID token's oid. Authentication
