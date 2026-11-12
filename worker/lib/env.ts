@@ -7,6 +7,9 @@ export interface Env {
 
   RESEND_API_KEY?: string;
   EMAIL_FROM?: string;
+  BUSINESS_CONTACT_SITE_KEY?: string;
+  BUSINESS_CONTACT_SECRET?: string;
+  BUSINESS_CONTACT_LIMIT?: { limit(input: { key: string }): Promise<{ success: boolean }> };
 
   META_APP_ID?: string;
   META_APP_SECRET?: string;

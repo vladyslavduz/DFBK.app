@@ -3,6 +3,7 @@ import { handleSchedulerPackages } from './routes/scheduler-packages';
 import type { Env } from './lib/env';
 import { json } from './lib/response';
 import { handleAdmin } from './routes/admin';
+import { handleBusinessContact } from './routes/business-contact';
 import { handleAuth } from './routes/auth';
 import { handleAI } from './routes/ai';
 import { handleEntitlements } from './routes/entitlements';
@@ -42,6 +43,9 @@ export default {
     if (destinationResponse) return destinationResponse;
     const schedulerResponse = await handleSchedulerPackages(request, env, url.pathname);
     if (schedulerResponse) return schedulerResponse;
+
+    const contactResponse = await handleBusinessContact(request, env, url);
+    if (contactResponse) return contactResponse;
 
     if (request.method === 'OPTIONS') {
       return new Response(null, {
