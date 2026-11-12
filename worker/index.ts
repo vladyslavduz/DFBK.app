@@ -5,6 +5,7 @@ import { json } from './lib/response';
 import { handleAdmin } from './routes/admin';
 import { handleBusinessContact } from './routes/business-contact';
 import { handleAuth } from './routes/auth';
+import { handleAuthRecovery } from './routes/auth-recovery';
 import { handleAI } from './routes/ai';
 import { handleEntitlements } from './routes/entitlements';
 import { handleProjectContent } from './routes/project-content';
@@ -23,7 +24,7 @@ import { handleSocial } from './routes/social';
 import { handleSocialPublish, handleSocialMedia } from './routes/social-publish';
 
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
 
     if (!url.pathname.startsWith('/api/')) {
@@ -46,6 +47,9 @@ export default {
 
     const contactResponse = await handleBusinessContact(request, env, url);
     if (contactResponse) return contactResponse;
+
+    const recoveryResponse = await handleAuthRecovery(request, env, url, ctx);
+    if (recoveryResponse) return recoveryResponse;
 
     if (request.method === 'OPTIONS') {
       return new Response(null, {

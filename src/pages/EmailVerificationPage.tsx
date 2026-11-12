@@ -1,11 +1,28 @@
 import AppLink from '../components/AppLink';
-import Header from '../components/Header';
-import Footer from '../components/Footer';
-import AppIcon from '../components/AppIcon';
+import AuthEmailForm from '../components/AuthEmailForm';
+import PageShell from '../components/PageShell';
 
 export default function EmailVerificationPage() {
-  const params = new URLSearchParams(window.location.search);
-  const successful = params.get('status') === 'success';
-  const email = params.get('email') || '';
-  return <><Header /><main className="verification-page"><section className="verification-page-card"><span className={`verification-page-icon${successful ? ' is-success' : ''}`}>{successful ? <AppIcon name="check" /> : '✉'}</span><span className="app-kicker">DFBK.app Konto</span><h1>{successful ? 'E-Mail bestätigt' : 'Bestätige deine E-Mail-Adresse'}</h1><p>{successful ? 'Dein Konto ist bereit. Du kannst dich jetzt anmelden und dein erstes Projekt erstellen.' : 'Wir haben dir eine E-Mail mit einem Bestätigungslink geschickt.'}</p>{email && <strong>{email}</strong>}{successful ? <AppLink className="button" to="/app">Zum persönlichen Bereich</AppLink> : <><button className="button" type="button" disabled title="Noch nicht verfügbar">E-Mail erneut senden · Demnächst</button><AppLink className="text-button" to="/">Zurück zur Startseite</AppLink></>}</section></main><Footer /></>;
+  const status = new URLSearchParams(window.location.search).get('status');
+  if (status === 'success') {
+    return (
+      <PageShell eyebrow="Konto" title="E-Mail bestätigt" intro="Du kannst dich jetzt mit deinem Passwort anmelden.">
+        <AppLink className="button" to="/login">Zur Anmeldung</AppLink>
+      </PageShell>
+    );
+  }
+
+  const intro = status === 'expired'
+    ? 'Dein Bestätigungslink ist abgelaufen. Fordere einen neuen Link an.'
+    : status === 'invalid'
+      ? 'Dieser Bestätigungslink ist ungültig. Fordere einen neuen Link an.'
+      : status === 'error'
+        ? 'Die Bestätigung konnte gerade nicht verarbeitet werden. Versuche es später erneut.'
+        : 'Öffne den Link in deiner Bestätigungs-E-Mail. Bei Bedarf kannst du hier einen neuen Link anfordern.';
+  return (
+    <PageShell eyebrow="Konto" title="E-Mail-Adresse bestätigen" intro={intro}>
+      <AuthEmailForm verification />
+      <p className="form-note"><AppLink to="/login">Zur Anmeldung</AppLink></p>
+    </PageShell>
+  );
 }

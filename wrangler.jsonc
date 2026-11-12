@@ -28,6 +28,11 @@
 
   "ratelimits": [
     {
+      "name": "AUTH_RECOVERY_LIMIT",
+      "namespace_id": "5601208",
+      "simple": { "limit": 5, "period": 60 }
+    },
+    {
       "name": "BUSINESS_CONTACT_LIMIT",
       "namespace_id": "5601207",
       "simple": { "limit": 5, "period": 60 }

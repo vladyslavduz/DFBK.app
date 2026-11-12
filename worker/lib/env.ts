@@ -6,6 +6,7 @@ export interface Env {
   OPENAI_API_KEY?: string;
 
   RESEND_API_KEY?: string;
+  AUTH_RECOVERY_LIMIT?: { limit(input: { key: string }): Promise<{ success: boolean }> };
   EMAIL_FROM?: string;
   BUSINESS_CONTACT_SITE_KEY?: string;
   BUSINESS_CONTACT_SECRET?: string;
