@@ -1,0 +1,82 @@
+name: Dependency Remediation Candidate (no production)
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dep-candidate-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  candidate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      CI: "true"
+      SOCIAL_ENABLED: "false"
+      SCHEDULER_WRITE_ENABLED: "false"
+      DFBK_TEST_MODE: local
+    steps:
+      - name: Checkout without credentials
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Setup Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Resolve patched compatible dependencies in temporary workspace
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/remediation
+          npm --version > artifacts/remediation/npm-version.txt
+          npm audit --json > artifacts/remediation/audit-before.json || true
+          npm audit --omit=dev --json > artifacts/remediation/audit-production-before.json || true
+          npm update vite wrangler --package-lock-only --ignore-scripts > artifacts/remediation/update.log 2>&1
+          npm audit fix --package-lock-only --ignore-scripts > artifacts/remediation/audit-fix.log 2>&1 || echo "Audit fix exit nonzero, inspect findings" >> artifacts/remediation/audit-fix.log
+          npm audit --json > artifacts/remediation/audit-after.json || true
+          npm audit --omit=dev --json > artifacts/remediation/audit-production-after.json || true
+          cp package.json artifacts/remediation/package.json
+          cp package-lock.json artifacts/remediation/package-lock.json
+          git diff --no-ext-diff -- package.json package-lock.json > artifacts/remediation/proposed-dependency-changes.diff || true
+          node -e "const a=require('./artifacts/remediation/audit-before.json');const b=require('./artifacts/remediation/audit-after.json');const prod=require('./artifacts/remediation/audit-production-after.json');console.log('Before:',JSON.stringify(a.metadata?.vulnerabilities));console.log('After:',JSON.stringify(b.metadata?.vulnerabilities));console.log('Production:',JSON.stringify(prod.metadata?.vulnerabilities));"
+
+      - name: Install locked candidate dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Configure Chromium for smoke tests
+        shell: bash
+        run: |
+          BROWSER_PATH=$(node -p "require('playwright').chromium.executablePath()")
+          test -x "$BROWSER_PATH"
+          echo "PROMO_BROWSER=$BROWSER_PATH" >> "$GITHUB_ENV"
+
+      - name: Full regression on candidate dependencies
+        run: python3 scripts/full_regression.py --output artifacts/full-regression
+
+      - name: Upload candidate lockfile and diagnostic results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-remediation-${{ github.run_id }}
+          path: |
+            artifacts/remediation/
+            artifacts/full-regression/
+          retention-days: 7
+          if-no-files-found: warn
