@@ -49,7 +49,7 @@ jobs:
       - name: Select Chromium executable for existing smoke scripts
         shell: bash
         run: |
-          echo "PROMO_BROWSER=$(node -p \"require('playwright').chromium.executablePath()\")" >> "$GITHUB_ENV"
+          echo "PROMO_BROWSER=$(node -p 'require(\"playwright\").chromium.executablePath()')" >> "$GITHUB_ENV"
 
       - name: Full Regression (mocked/local, no production)
         run: python3 scripts/full_regression.py --output artifacts/full-regression
