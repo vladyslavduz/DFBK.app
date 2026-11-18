@@ -1,0 +1,82 @@
+name: DFBK Cloud Audit (offline app tests)
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dfbk-cloud-audit-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    name: Read-only source, regression and dependency audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      CI: "true"
+      DFBK_TEST_MODE: local
+      SOCIAL_ENABLED: "false"
+      SCHEDULER_WRITE_ENABLED: "false"
+      NO_COLOR: "1"
+    steps:
+      - name: Checkout (no persisted credentials)
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Locked dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Gather source and security-control inventory
+        run: python3 scripts/cloud_security_audit.py
+
+      - name: Dependency advisory snapshot (npm registry, no production API)
+        shell: bash
+        run: |
+          mkdir -p artifacts/security-audit
+          set +e
+          npm audit --json > artifacts/security-audit/npm-audit.json
+          result=$?
+          echo "$result" > artifacts/security-audit/npm-audit-exit.txt
+          echo "npm audit exit=$result (findings require manual triage)"
+          exit 0
+
+      - name: Install isolated Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Browser binary for existing smoke scripts
+        shell: bash
+        run: |
+          BROWSER_PATH=$(node -p "require('playwright').chromium.executablePath()")
+          test -x "$BROWSER_PATH"
+          echo "PROMO_BROWSER=$BROWSER_PATH" >> "$GITHUB_ENV"
+
+      - name: Full local regression on fixtures
+        run: python3 scripts/full_regression.py --output artifacts/full-regression
+
+      - name: Upload all evidence even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dfbk-cloud-audit-${{ github.run_id }}
+          path: |
+            artifacts/security-audit/
+            artifacts/full-regression/
+          if-no-files-found: warn
+          retention-days: 7
