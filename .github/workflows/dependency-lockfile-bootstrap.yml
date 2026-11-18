@@ -117,10 +117,12 @@ jobs:
           test "$GITHUB_REF_NAME" = "security/lockfile-patched-candidate-2026-11"
           git diff --quiet -- package-lock.json || { echo "Unexpected local changes"; exit 1; }
           sha=$(gh api "repos/$GITHUB_REPOSITORY/contents/package-lock.json?ref=$GITHUB_REF_NAME" --jq .sha)
+          printf "%s" "$sha" > candidate/expected-sha.txt
           python3 - <<'PY'
           import base64, json, pathlib
           p=pathlib.Path("candidate/dependency-candidate/package-lock.json")
-          data={"message":"security: lock compatible audited dependency updates (CI-tested)","content":base64.b64encode(p.read_bytes()).decode("ascii"),"branch":"security/lockfile-patched-candidate-2026-11"}
+          sha=pathlib.Path("candidate/expected-sha.txt").read_text().strip()
+          data={"message":"security: lock compatible audited dependency updates (CI-tested)","content":base64.b64encode(p.read_bytes()).decode("ascii"),"branch":"security/lockfile-patched-candidate-2026-11","sha":sha}
           pathlib.Path("candidate/payload.json").write_text(json.dumps(data))
           PY
-          gh api -X PUT "repos/$GITHUB_REPOSITORY/contents/package-lock.json" -f sha="$sha" --input candidate/payload.json --jq '.commit.sha'
+          gh api -X PUT "repos/$GITHUB_REPOSITORY/contents/package-lock.json" --input candidate/payload.json --jq '.commit.sha'
