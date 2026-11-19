@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Statorpaket – Bleche hinzufügen</title>
+<style>
+:root{font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif;color:#e8eef8;background:#0b1423}
+*{box-sizing:border-box}body{margin:0;padding:24px 14px}.wrap{max-width:850px;margin:auto}
+h1{font-size:clamp(1.5rem,4vw,2.3rem);margin:0 0 8px}p{color:#bac8dd}
+.panel{background:#142237;border:1px solid #33445d;border-radius:18px;padding:22px;margin:18px 0}
+.meta{display:flex;gap:12px;flex-wrap:wrap}.chip{border:1px solid #465872;border-radius:10px;padding:10px 14px;color:#d5e4f6}
+label{display:block;margin-bottom:8px;font-weight:700}
+input{width:100%;max-width:350px;font:inherit;font-size:1.5rem;background:#091322;color:white;border:2px solid #6f9de7;border-radius:12px;padding:12px}
+.result{display:flex;gap:14px;flex-wrap:wrap;margin-top:20px}
+.stat{flex:1;min-width:145px;background:#0a1729;padding:14px;border-radius:12px}
+.stat strong{display:block;font-size:1.7rem;margin-top:5px;color:#a7caff}
+.stat small{color:#becbe0}
+#status{margin-top:14px;min-height:24px;font-weight:600}
+.ok{color:#8ae2ae}.warn{color:#ffcc82}
+.figure{height:170px;display:flex;align-items:flex-end;justify-content:center;gap:2px;padding:15px;margin-top:12px;position:relative}
+.plate{width:25px;height:105px;background:linear-gradient(90deg,#7f9fc0,#304d6d 40%,#7897b8);border:1px solid #abc5e3;border-radius:3px;transform:skewY(-8deg)}
+.plate.extra{background:linear-gradient(90deg,#ffc86c,#a85d1b);border-color:#ffe4a0;animation:add .35s ease both}
+@keyframes add{from{opacity:0;transform:translateY(-30px) skewY(-8deg)}to{opacity:1;transform:skewY(-8deg)}}
+table{width:100%;border-collapse:collapse;font-size:clamp(.79rem,2.5vw,1rem)}
+th,td{text-align:left;padding:13px 9px;border-bottom:1px solid #35455c}
+th{color:#a8bfdc}td:nth-child(2){font-weight:750;color:#ffcd83}
+tbody tr{cursor:pointer}tbody tr:hover,tbody tr.active{background:#233e5c}
+.note{font-size:.85rem;line-height:1.5}button{border:0;border-radius:9px;padding:10px 16px;background:#3b72b6;color:white;font:inherit;cursor:pointer}
+@media print{:root{color:black;background:white}.panel{background:white;border:1px solid #aaa}.chip,.stat{color:black;background:white}.stat strong,th,td:nth-child(2){color:black}.figure{display:none}button{display:none}input{color:black;background:white}}
+</style></head><body><main class="wrap">
+<h1>Statorpaket – Bleche hinzufügen</h1>
+<p>Interaktive Arbeitshilfe zur Berechnung der zusätzlichen Bleche.</p>
+<div class="meta"><div class="chip">Maximale Höhe: <b>160,30 mm</b></div><div class="chip">Blechdicke: <b>0,25 mm</b></div><div class="chip">Maximal: <b>6 Bleche</b></div></div>
+<section class="panel">
+<label for="height">Gemessene Höhe (mm)</label>
+<input id="height" inputmode="decimal" autocomplete="off" value="159,00" aria-describedby="status">
+<div class="result">
+<div class="stat"><small>Bleche hinzufügen</small><strong id="count">+5</strong></div>
+<div class="stat"><small>Berechnete neue Höhe</small><strong id="newHeight">160,25 mm</strong></div>
+</div>
+<div id="status" role="status" aria-live="polite"></div>
+<div class="figure" id="figure" aria-label="Schematische Darstellung des Blechpakets mit ergänzten Blechen"></div>
+<p class="note">Schematische Animation: Blaue Bleche = vorhandenes Paket; orange Bleche = hinzuzufügende Bleche. Keine maßstabsgetreue Darstellung.</p>
+</section>
+<section class="panel"><h2>Übersichtstabelle</h2>
+<table><thead><tr><th>Gemessene Höhe</th><th>Bleche hinzufügen</th><th>Neue Höhe</th></tr></thead><tbody id="rows">
+<tr data-value="158.60"><td>158,55–158,79 mm</td><td>+6 Bleche</td><td>160,05–160,29 mm</td></tr>
+<tr data-value="158.90"><td>158,80–159,04 mm</td><td>+5 Bleche</td><td>160,05–160,29 mm</td></tr>
+<tr data-value="159.20"><td>159,05–159,29 mm</td><td>+4 Bleche</td><td>160,05–160,29 mm</td></tr>
+<tr data-value="159.40"><td>159,30–159,54 mm</td><td>+3 Bleche</td><td>160,05–160,29 mm</td></tr>
+<tr data-value="159.60"><td>159,55–159,79 mm</td><td>+2 Bleche</td><td>160,05–160,29 mm</td></tr>
+<tr data-value="159.90"><td>159,80–160,04 mm</td><td>+1 Blech</td><td>160,05–160,29 mm</td></tr>
+</tbody></table>
+<p class="note">Nach dem Hinzufügen erneut messen. Maßgeblich sind die betrieblichen Toleranzen und Arbeitsanweisungen. Diese Rechenhilfe setzt eine tatsächliche Dickenzunahme von 0,25 mm je Blech voraus.</p></section>
+<button type="button" onclick="window.print()">Tabelle drucken</button>
+</main><script>
+"use strict";
+const field=document.getElementById("height"),count=document.getElementById("count"),newHeight=document.getElementById("newHeight"),status=document.getElementById("status"),figure=document.getElementById("figure"),rows=[...document.querySelectorAll("#rows tr")];
+const fmt=n=>n.toFixed(2).replace(".",",");
+function update(){
+const raw=field.value.trim().replace(",",".");
+const valid=/^\d{1,3}(?:\.\d{1,3})?$/.test(raw);
+const mm=valid?Number(raw):NaN;
+rows.forEach(r=>r.classList.remove("active"));
+if(!Number.isFinite(mm)||mm<0){count.textContent="–";newHeight.textContent="–";status.textContent="Bitte gültige Höhe eingeben.";status.className="warn";figure.replaceChildren();return}
+const available=Math.floor((160.30-mm+1e-8)/.25),n=Math.max(0,Math.min(6,available)),after=mm+n*.25;
+count.textContent=n?"+"+n:"0";newHeight.textContent=fmt(after)+" mm";
+const allowed=mm>=158.55&&mm<=160.30;
+if(!allowed){status.textContent=mm>160.30?"Messwert über 160,30 mm – keine Bleche hinzufügen.":"Außerhalb des Tabellenbereichs – Arbeitsanweisung prüfen.";status.className="warn"}
+else if(n===0){status.textContent="Keine Bleche hinzufügen. Endmaß prüfen.";status.className="ok"}
+else{status.textContent="Rechnerisch zulässig. Endmaß nach dem Hinzufügen nachmessen.";status.className="ok"}
+const i=6-n;if(allowed&&n>0&&i>=0&&i<rows.length)rows[i].classList.add("active");
+figure.replaceChildren();
+for(let j=0;j<8+n;j++){const b=document.createElement("span");b.className="plate"+(j>=8?" extra":"");if(j>=8)b.style.animationDelay=((j-8)*.12)+"s";figure.appendChild(b)}
+}
+field.addEventListener("input",update);
+rows.forEach(r=>r.addEventListener("click",()=>{field.value=fmt(Number(r.dataset.value));update();field.focus()}));
+update();
+</script></body></html>
