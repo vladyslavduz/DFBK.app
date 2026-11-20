@@ -39,17 +39,22 @@ Trial и Business имеют одинаковый основной сценар�
 в будущей registration-интеграции. Manual Business grant сохраняется независимо от
 платежей; новая downgrade/history policy этим решением не устанавливается.
 
-**Блокирующий шаг перед активацией:** отдельная reviewed offline SQL task ручного
-подтверждения истории. `trial_project_scope_no_update` сейчас блокирует unknown → verified;
-работающего admin confirmation ещё нет. Будущая task должна в одной контролируемой
-транзакции проверить единственную строку unknown/NULL конкретного аккаунта, зафиксировать
-evidence и подтверждённый baseline, временно снять именно guard обновления, выполнить
-условный UPDATE unknown/NULL → verified/nonnegative baseline, проверить ровно одно
-изменение и восстановить тот же guard до commit. Verified baseline никогда не уменьшать
-и verified scope не переписывать. Новые admissions учитываются отдельно и прибавляются
-к baseline; evidence должно исключать двойной учёт. Любой провал assertion требует rollback.
-Общего reset/unguarded UPDATE или production SQL здесь нет. Запрет включается только
-по отдельному release/schema/config плану.
+**Механизм ручного подтверждения принят центральным review 05.11.2026, но не активирован.**
+Inactive [SQL task подтверждения](../database/tasks/2026-11-05-trial-history-confirmation.sql)
+последовательно дополняет [admission foundation](../database/tasks/2026-11-04-trial-project-admission.sql).
+Только при будущей отдельно разрешённой атомарной schema migration blanket guard
+`trial_project_scope_no_update` заменяется один раз постоянным conditional guard.
+При каждом подтверждении guard не снимается и не пересоздаётся: доверенный admin
+вставляет immutable confirmation receipt с evidence и явно подтверждённым baseline;
+triggers атомарно переводят missing/unknown scope в verified и проверяют результат.
+Точный повтор того же frozen confirmation идемпотентен; другое подтверждение конфликтует.
+Verified baseline никогда не уменьшать и verified scope не переписывать. Новые admissions
+учитываются отдельно и прибавляются к baseline; evidence должно исключать двойной учёт.
+Любой провал assertion откатывает receipt и изменение scope. Никакого общего reset,
+молчаливого baseline 0 или count текущих проектов вместо истории нет.
+[Контракт Backend](TRIAL_HISTORY_CONFIRMATION.md) подготовлен; authenticated admin handler/API
+ещё не реализован. Обе Trial SQL tasks не применены к production. Активация enforcement
+требует отдельного release/schema/config плана; acceptance механизма её не разрешает.
 
 Все каналы остаются дорожной целью. Обещать automation можно только для реально
 поддержанного, подключённого и ready connector с правами конкретного назначения.
