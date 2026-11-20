@@ -72,6 +72,6 @@ figure.replaceChildren();
 for(let j=0;j<8+n;j++){const b=document.createElement("span");b.className="plate"+(j>=8?" extra":"");if(j>=8)b.style.animationDelay=((j-8)*.12)+"s";figure.appendChild(b)}
 }
 field.addEventListener("input",update);
-rows.forEach(r=>r.addEventListener("click",()=>{field.value=fmt(Number(r.dataset.value));update();field.focus()}));
+rows.forEach(r=>r.addEventListener("click",()=>{field.value=fmt(Number(r.dataset.value));update()}));
 update();
 </script></body></html>
